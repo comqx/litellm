@@ -81,7 +81,7 @@ litellm/proxy/google-cloud-sdk/*
 tests/llm_translation/log.txt
 venv/
 tests/local_testing/log.txt
-
+ui-new
 .codegpt
 litellm/proxy/_new_new_secret_config.yaml
 litellm/proxy/custom_guardrail.py
@@ -150,3 +150,4 @@ litellm.log
 
 .coverage-rust
 coverage-rust.xml
+.gstack/
