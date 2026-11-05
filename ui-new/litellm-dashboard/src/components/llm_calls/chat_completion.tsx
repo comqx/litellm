@@ -6,6 +6,7 @@ import { extractPromptCacheTokens } from "@/utils/promptCacheUsage";
 import { parseUsageCost } from "./usage_cost";
 import { buildPlaygroundHeaders, type CustomHeaders } from "./request_headers";
 import { createGatewayClient } from "./gateway_client";
+import { observeResponseHeaders, type ResponseHeadersListener } from "@/lib/http/observeResponseHeaders";
 
 const completionAsSingleChunk = (completion: ChatCompletion): ChatCompletionChunk =>
   ({
@@ -51,6 +52,7 @@ export async function makeOpenAIChatCompletionRequest(
   mcpToolsets?: MCPToolset[],
   streamingEnabled: boolean = true,
   customHeaders?: CustomHeaders,
+  onResponseHeaders?: ResponseHeadersListener,
 ) {
   // base url should be the current base_url
   const isLocal = process.env.NODE_ENV === "development";
@@ -63,6 +65,7 @@ export async function makeOpenAIChatCompletionRequest(
     accessToken,
     baseURL: customBaseUrl,
     defaultHeaders: headers,
+    ...(onResponseHeaders ? { fetch: observeResponseHeaders(onResponseHeaders) } : {}),
   });
 
   try {

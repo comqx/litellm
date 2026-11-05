@@ -185,7 +185,6 @@ export async function dispatchRequest(context: DispatchContext): Promise<void> {
         mcpToolsets,
         settings.stream,
         headers,
-        onHeaders,
       );
     case EndpointType.IMAGE:
       return makeOpenAIImageGenerationRequest(
@@ -197,7 +196,6 @@ export async function dispatchRequest(context: DispatchContext): Promise<void> {
         signal,
         baseUrl,
         headers,
-        onHeaders,
       );
     case EndpointType.IMAGE_EDITS:
       return makeOpenAIImageEditsRequest(
@@ -210,7 +208,6 @@ export async function dispatchRequest(context: DispatchContext): Promise<void> {
         signal,
         baseUrl,
         headers,
-        onHeaders,
       );
     case EndpointType.SPEECH:
       return makeOpenAIAudioSpeechRequest(
@@ -225,7 +222,6 @@ export async function dispatchRequest(context: DispatchContext): Promise<void> {
         undefined,
         baseUrl,
         headers,
-        onHeaders,
       );
     case EndpointType.TRANSCRIPTION:
       return makeOpenAIAudioTranscriptionRequest(
@@ -241,7 +237,6 @@ export async function dispatchRequest(context: DispatchContext): Promise<void> {
         undefined,
         baseUrl,
         headers,
-        onHeaders,
       );
     case EndpointType.EMBEDDINGS:
       return makeOpenAIEmbeddingsRequest(
@@ -252,7 +247,6 @@ export async function dispatchRequest(context: DispatchContext): Promise<void> {
         tags,
         baseUrl,
         headers,
-        onHeaders,
       );
     case EndpointType.INTERACTIONS:
       return makeInteractionsRequest(
@@ -265,7 +259,6 @@ export async function dispatchRequest(context: DispatchContext): Promise<void> {
         baseUrl,
         undefined,
         headers,
-        onHeaders,
       );
     case EndpointType.A2A_AGENTS:
       return makeA2ASendMessageRequest(

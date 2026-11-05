@@ -1,4 +1,5 @@
 import openai from "openai";
+import { observeResponseHeaders, type ResponseHeadersListener } from "@/lib/http/observeResponseHeaders";
 import { MessageType } from "../chat_ui/types";
 import { TokenUsage } from "../chat_ui/ResponseMetrics";
 import { getProxyBaseUrl } from "@/components/networking";
@@ -87,6 +88,7 @@ export async function makeOpenAIResponsesRequest(
   streamingEnabled: boolean = true,
   onTotalLatency?: (latency: number) => void,
   customHeaders?: CustomHeaders,
+  onResponseHeaders?: ResponseHeadersListener,
 ) {
   if (!accessToken) {
     throw new Error("需要虚拟密钥");
@@ -110,6 +112,7 @@ export async function makeOpenAIResponsesRequest(
     baseURL: proxyBaseUrl,
     dangerouslyAllowBrowser: true,
     defaultHeaders: headers,
+    ...(onResponseHeaders ? { fetch: observeResponseHeaders(onResponseHeaders) } : {}),
   });
 
   try {
