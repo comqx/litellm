@@ -1,0 +1,197 @@
+import React, { useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cva.config";
+import AddGuardrailForm from "./add_guardrail_form";
+import { Logo } from "@/components/molecules/logo/Logo";
+import { GUARDRAIL_PRESETS } from "./guardrail_garden_configs";
+import { GuardrailCardInfo } from "./guardrail_garden_data";
+
+const CATEGORY_LABELS: Record<GuardrailCardInfo["category"], { provider: string; type: string }> = {
+  litellm: { provider: "LiteLLM Content Filter", type: "内容过滤" },
+  decision_model: { provider: "Decision Model", type: "决策模型" },
+  partner: { provider: "Partner Guardrail", type: "合作伙伴" },
+};
+
+interface GuardrailDetailViewProps {
+  card: GuardrailCardInfo;
+  onBack: () => void;
+  accessToken: string | null;
+  onGuardrailCreated: () => void;
+}
+
+const GuardrailDetailView: React.FC<GuardrailDetailViewProps> = ({ card, onBack, accessToken, onGuardrailCreated }) => {
+  const [isAddFormVisible, setIsAddFormVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const detailRows = [
+    { property: "供应商", value: CATEGORY_LABELS[card.category].provider },
+    ...(card.subcategory ? [{ property: "子类别", value: card.subcategory }] : []),
+    ...(card.category === "decision_model"
+      ? [{ property: "费用", value: "按决策模型供应商每次调用计费" }]
+      : []),
+    ...(card.category === "litellm" ? [{ property: "费用", value: "$0 / 请求" }] : []),
+    ...(card.category === "litellm" ? [{ property: "外部依赖", value: "无" }] : []),
+    ...(card.category === "litellm" ? [{ property: "延迟", value: card.eval?.latency || "<1ms" }] : []),
+  ];
+
+  const evalRows = card.eval
+    ? [
+        { metric: "精确率", value: `${card.eval.precision}%` },
+        { metric: "召回率", value: `${card.eval.recall}%` },
+        { metric: "F1 分数", value: `${card.eval.f1}%` },
+        { metric: "测试用例数", value: String(card.eval.testCases) },
+        { metric: "误报数", value: "0" },
+        { metric: "漏报数", value: "0" },
+        { metric: "延迟（p50）", value: card.eval.latency },
+      ]
+    : [];
+
+  const tabs = [{ key: "overview", label: "概览" }, ...(card.eval ? [{ key: "eval", label: "评测结果" }] : [])];
+
+  return (
+    <div className="mx-auto max-w-[960px]">
+      {/* Back link */}
+      <div
+        onClick={onBack}
+        className="mb-6 inline-flex cursor-pointer items-center gap-1.5 text-sm text-muted-foreground"
+      >
+        <ArrowLeft className="size-3" />
+        <span>{card.name}</span>
+      </div>
+
+      {/* ── Header block (Vertex-style) ── */}
+      <div className="mb-2 flex items-center gap-4">
+        <Logo src={card.logo} label={card.name} className="w-10 h-10 rounded-lg object-contain shrink-0" />
+        <h1 className="m-0 text-[28px] font-normal leading-tight text-foreground">{card.name}</h1>
+      </div>
+
+      <p className="m-0 mb-5 text-sm leading-relaxed text-muted-foreground">{card.description}</p>
+
+      {/* Action buttons — outlined style like Vertex */}
+      <div className="mb-8 flex gap-2.5">
+        <Button variant="outline" className="rounded-full" onClick={() => setIsAddFormVisible(true)}>
+          新建护栏
+        </Button>
+      </div>
+
+      {/* ── Tab bar ──────────────────────────────────── */}
+      <div className="mb-7 border-b border-border">
+        <div className="flex">
+          {tabs.map((tab) => (
+            <div
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "-mb-px cursor-pointer border-b-[3px] px-5 py-3 text-sm",
+                activeTab === tab.key
+                  ? "border-info font-medium text-info"
+                  : "border-transparent font-normal text-muted-foreground",
+              )}
+            >
+              {tab.label}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Tab content ──────────────────────────────── */}
+      {activeTab === "overview" && (
+        <div className="flex gap-16">
+          {/* Left column — overview + details table */}
+          <div className="min-w-0 flex-1">
+            <h2 className="m-0 mb-3 text-lg font-normal text-foreground">概览</h2>
+            <p className="m-0 mb-8 text-sm leading-[1.7] text-foreground">{card.description}</p>
+
+            <h2 className="m-0 mb-1 text-lg font-normal text-foreground">Guardrail 详情</h2>
+            <p className="m-0 mb-4 text-[13px] text-muted-foreground">详情如下</p>
+
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="w-50 py-3 text-left font-medium text-muted-foreground">属性</th>
+                  <th className="py-3 text-left font-medium text-muted-foreground">{card.name}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detailRows.map((row, i) => (
+                  <tr key={i} className="border-b border-border">
+                    <td className="py-3 text-foreground">{row.property}</td>
+                    <td className="py-3 text-foreground">{row.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Right column — metadata sidebar like Vertex */}
+          <div className="w-60 shrink-0">
+            {/* Guardrail ID */}
+            <div className="mb-7">
+              <div className="mb-1 text-xs text-muted-foreground">类型</div>
+              <div className="break-all text-[13px] text-foreground">litellm/{card.id}</div>
+            </div>
+
+            {/* Type */}
+            <div className="mb-7">
+              <div className="mb-1 text-xs text-muted-foreground">类型</div>
+              <div className="text-[13px] text-foreground">{CATEGORY_LABELS[card.category].type}</div>
+            </div>
+
+            {/* Tags — pill style like Vertex */}
+            {card.tags.length > 0 && (
+              <div className="mb-7">
+                <div className="mb-2 text-xs text-muted-foreground">标签</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {card.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-2xl border border-border bg-card px-3 py-1 text-xs text-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "eval" && (
+        <div>
+          <h2 className="m-0 mb-4 text-lg font-normal text-foreground">评测结果</h2>
+          <table className="w-full max-w-[560px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted">
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">指标</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">数值</th>
+              </tr>
+            </thead>
+            <tbody>
+              {evalRows.map((row, i) => (
+                <tr key={i} className="border-b border-border">
+                  <td className="px-4 py-3 text-foreground">{row.metric}</td>
+                  <td className="px-4 py-3 font-medium text-foreground">{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <AddGuardrailForm
+        visible={isAddFormVisible}
+        onClose={() => setIsAddFormVisible(false)}
+        accessToken={accessToken}
+        onSuccess={() => {
+          setIsAddFormVisible(false);
+          onGuardrailCreated();
+        }}
+        preset={GUARDRAIL_PRESETS[card.id]}
+      />
+    </div>
+  );
+};
+
+export default GuardrailDetailView;

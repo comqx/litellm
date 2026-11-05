@@ -1,0 +1,788 @@
+import ClassifierPrimarySettings from "./ClassifierPrimarySettings";
+import { AutoRouterAllowanceNote } from "./AutoRouterAvailability";
+import { transitionClassifierType } from "./classifier_type_transition";
+import JevClassifierConfig from "./JevClassifierConfig";
+import { Info } from "lucide-react";
+import { SimpleTooltip } from "@/components/ui/tooltip";
+import { MultiSelect } from "@/components/shared/MultiSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+import React from "react";
+import ClassifierPromptEditor from "./ClassifierPromptEditor";
+import OpeningPromptEditor, { type OpeningPromptSelection } from "./OpeningPromptEditor";
+import { RestrictedSection, restrictedBy } from "./TierRestrictions";
+import HeuristicScoringConfig from "./HeuristicScoringConfig";
+import ClassifierReasoningEffortSelect from "./ClassifierReasoningEffortSelect";
+import ClassifierCircuitBreakerConfig from "./ClassifierCircuitBreakerConfig";
+import ClassifierVisionConfig from "./ClassifierVisionConfig";
+import { getHeuristicV2SuccessThresholdError } from "./build_complexity_router_config";
+import ClassifierPluginTimeoutField from "./ClassifierPluginTimeoutField";
+import ClassifierTypeRadios from "./ClassifierTypeRadios";
+import { ClassifierMenu, ClassifierOption } from "./AutoRouterClassifierTabs";
+import { isHeuristicChain } from "./classifier_types";
+import HeuristicKeywordOverrides from "./HeuristicKeywordOverrides";
+import type { ReasoningEffort } from "./complexity_router_tiers";
+import { useComplexityScorerDefaults } from "@/app/(dashboard)/hooks/autoRouter/useComplexityScorerDefaults";
+import {
+  ClassifierFallback,
+  ClassifierLLMConfig,
+  ClassifierType,
+  ComplexityRouterConfigValue,
+  DEFAULT_CLASSIFIER_CONTEXT_BUDGET_CHARS,
+  MIN_QUOTED_CONTEXT_TURN_CHARS,
+  DEFAULT_CLASSIFIER_CONTEXT_WINDOW_SIZE,
+  DEFAULT_CLASSIFIER_FALLBACK,
+  DEFAULT_CLASSIFIER_TIMEOUT_MS,
+  DEFAULT_CLASSIFICATION_RUBRIC,
+  ClassificationRubric,
+  effectiveTierLabel,
+  heuristicScoringRole,
+  heuristicTuningType,
+  usesHeuristicV2,
+  usesLlmClassifier,
+  usesClassifierContext,
+  DEFAULT_HYBRID_BOUNDARY_MARGIN,
+  HEURISTIC_FIRST_MAX_TIER_KEYS,
+  effectiveClassifierType,
+} from "./ComplexityRouterConfig";
+
+const DEFAULT_SCORING_EXPLANATION =
+  "路由器会跨 7 个内置维度为每个请求评分：Token 数量、代码存在性、推理标记、技术术语、" +
+  "简单指示词、多步骤模式和问题复杂度，外加你添加的任何自定义维度。" +
+  "加权得分决定层级：";
+
+const HEURISTIC_V2_EXPLANATION =
+  "路由器用校准模型估算四个层级的成功概率，然后选择 " +
+  "它在本地运行，无需分类器 API 调用。";
+
+const CLASSIFIER_TIMEOUT_ID = "classifier-timeout-ms";
+const CLASSIFIER_CONTEXT_WINDOW_SIZE_ID = "classifier-context-window-size";
+const CLASSIFIER_CONTEXT_BUDGET_CHARS_ID = "classifier-context-budget-chars";
+const HYBRID_BOUNDARY_MARGIN_ID = "hybrid-boundary-margin";
+const HEURISTIC_V2_SUCCESS_THRESHOLD_ID = "heuristic-v2-success-threshold";
+
+/**
+ * The three boundaries this card states, as displayed strings, or null until the proxy's shipped defaults
+ * have arrived. Kept out of the component so the card cannot state a range the router stopped using, and
+ * so the derivation does not add branches to an already dense render.
+ */
+const boundaryRanges = (
+  shipped: Record<string, number> | undefined,
+  overrides: Record<string, number> | undefined,
+  reasoningOverrideMinScore: number | undefined,
+): {
+  simpleMedium: string;
+  mediumComplex: string;
+  complexReasoning: string;
+  reasoningOverrideFloor: string;
+} | null => {
+  const effective: Record<string, number> = { ...shipped, ...overrides };
+  const [low, mid, high] = [effective.simple_medium, effective.medium_complex, effective.complex_reasoning];
+  if (low === undefined || mid === undefined || high === undefined) return null;
+  return {
+    simpleMedium: low.toFixed(2),
+    mediumComplex: mid.toFixed(2),
+    complexReasoning: high.toFixed(2),
+    reasoningOverrideFloor: (reasoningOverrideMinScore ?? low).toFixed(2),
+  };
+};
+
+const HowClassificationWorks: React.FC<{ value: ComplexityRouterConfigValue }> = ({ value }) => {
+  // The shipped boundaries come from the proxy, so this card cannot state ranges the router stopped using.
+  const { data: scorerDefaults, isError } = useComplexityScorerDefaults();
+  const scorerRuns = heuristicScoringRole(value) !== "never";
+  const ranges = boundaryRanges(
+    scorerDefaults?.tier_boundaries,
+    value.tier_boundaries,
+    value.reasoning_override_min_score,
+  );
+  const scorerDefaultsUnavailable = scorerRuns && !ranges && isError;
+
+  if (value.custom_tier_set) return null;
+
+  return (
+    <Card className="bg-muted mt-4">
+      <CardContent>
+        <strong className="block mb-2 font-semibold">分类的工作原理</strong>
+        <span className="text-[13px] text-muted-foreground">
+          {usesHeuristicV2(value) ? HEURISTIC_V2_EXPLANATION : DEFAULT_SCORING_EXPLANATION}
+          {usesHeuristicV2(value) &&
+            (isHeuristicChain(value.classifier_type)
+              ? " If no tier qualifies, or the local-check policy requires a judge, the judge chooses the tier."
+              : " If none qualify, it selects Reasoning. It runs locally with no classifier API call.")}
+        </span>
+        {scorerRuns && ranges && (
+          <ul className="mt-2 pl-5 text-[13px] text-muted-foreground">
+            <li>
+              <strong>{effectiveTierLabel("SIMPLE", value.tier_labels)}</strong>: Score &lt; {ranges.simpleMedium}
+            </li>
+            <li>
+              <strong>{effectiveTierLabel("MEDIUM", value.tier_labels)}</strong>: Score {ranges.simpleMedium} -{" "}
+              {ranges.mediumComplex}
+            </li>
+            <li>
+              <strong>{effectiveTierLabel("COMPLEX", value.tier_labels)}</strong>: Score {ranges.mediumComplex} -{" "}
+              {ranges.complexReasoning}
+            </li>
+            <li>
+              <strong>{effectiveTierLabel("REASONING", value.tier_labels)}</strong>: Score &gt;{" "}
+              {ranges.complexReasoning} (or 2+ reasoning markers with a score of at least{" "}
+              {ranges.reasoningOverrideFloor})
+            </li>
+          </ul>
+        )}
+        {scorerDefaultsUnavailable && (
+          <span className="text-[13px] block mt-2 text-muted-foreground">
+            无法从代理加载层级得分范围。
+          </span>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+interface ClassificationMethodConfigProps {
+  jevSection?: "all" | "advanced";
+  value: ComplexityRouterConfigValue;
+  onChange: (value: ComplexityRouterConfigValue) => void;
+  modelOptions: { value: string; label: string }[];
+  effortOptionsByModel: Record<string, string[] | null | undefined>;
+  customTechnicalKeywords?: string[];
+  onCustomTechnicalKeywordsChange?: (keywords: string[]) => void;
+  showValidationErrors?: boolean;
+  /** The resolved default model - see resolveComplexityDefaultModel. Names and gates the radio. */
+  defaultModel?: string;
+  advancedOnly?: boolean;
+  section?: "selection" | "classifier" | "heuristic";
+}
+
+export const InactiveHeuristicV2Threshold: React.FC<Pick<ClassificationMethodConfigProps, "value" | "onChange">> = ({
+  value,
+  onChange,
+}) => {
+  const threshold = value.heuristic_v2_success_threshold;
+  if (usesHeuristicV2(value) || threshold === undefined) return null;
+  const error = getHeuristicV2SuccessThresholdError(threshold);
+  if (effectiveClassifierType(value) === "llm" && !error) return null;
+  return (
+    <section aria-label="未启用的Heuristic v2 阈值" className="mb-4 space-y-2 rounded-md border p-3">
+      <p className="text-sm font-medium">
+        Heuristic v2 success threshold (inactive):{" "}
+        <output aria-label="保留的Heuristic v2 阈值">
+          {Number.isFinite(threshold) ? threshold : "无效值"}
+        </output>
+      </p>
+      <p className="text-sm text-muted-foreground">仅在选择Heuristic v2 时使用</p>
+      {error && (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => onChange({ ...value, heuristic_v2_success_threshold: undefined })}
+      >
+        清除Heuristic v2 阈值
+      </Button>
+    </section>
+  );
+};
+
+const ClassificationMethodConfig: React.FC<ClassificationMethodConfigProps> = ({
+  value,
+  onChange,
+  modelOptions,
+  effortOptionsByModel,
+  customTechnicalKeywords,
+  onCustomTechnicalKeywordsChange,
+  showValidationErrors = false,
+  defaultModel,
+  advancedOnly = false,
+  jevSection,
+  section,
+}) => {
+  const [draft, setDraft] = React.useState<{ id: string; raw: string } | null>(null);
+  const hasDefaultModel = Boolean(defaultModel);
+  const classifierType = effectiveClassifierType(value);
+  const showSelection = section === undefined || section === "selection";
+  const showClassifier = section === undefined || section === "classifier";
+  const heuristic = heuristicTuningType(value);
+  const showHeuristic = (section === undefined || section === "heuristic") && heuristic !== undefined;
+  const showLocalChecks =
+    showSelection && advancedOnly && ["llm", "heuristic_first", "hybrid"].includes(classifierType);
+  const usesCustomPrompt = Boolean(value.classifier_llm_config?.system_prompt?.trim());
+  const contextBudget = value.classifier_context_budget_chars ?? DEFAULT_CLASSIFIER_CONTEXT_BUDGET_CHARS;
+  const contextBudgetQuotesNothing = contextBudget > 0 && contextBudget < MIN_QUOTED_CONTEXT_TURN_CHARS;
+  const classificationRubric = value.classifier_llm_config?.classification_rubric ?? DEFAULT_CLASSIFICATION_RUBRIC;
+  const classifierModel = value.classifier_llm_config?.model ?? "";
+  const classifierReasoningEffort = value.classifier_llm_config?.reasoning_effort;
+  const explicitlySupportedClassifierEfforts = effortOptionsByModel[classifierModel];
+  const successThresholdError = getHeuristicV2SuccessThresholdError(value.heuristic_v2_success_threshold);
+  const successThresholdDraft =
+    draft?.id === HEURISTIC_V2_SUCCESS_THRESHOLD_ID &&
+    Object.is(value.heuristic_v2_success_threshold, draft.raw.trim() === "" ? undefined : Number(draft.raw))
+      ? draft.raw
+      : null;
+
+  const handleClassifierTypeChange = (classifierType: ClassifierType) => {
+    onChange(transitionClassifierType(value, classifierType));
+  };
+
+  const handleHeuristicFirstMaxTierChange = (tier: string) => {
+    onChange({ ...value, heuristic_first_max_tier: tier });
+  };
+
+  const handleHybridBoundaryMarginChange = (raw: string) => {
+    setDraft({ id: HYBRID_BOUNDARY_MARGIN_ID, raw });
+    const parsed = Number(raw);
+    if (raw.trim() === "" || !Number.isFinite(parsed)) return;
+    onChange({ ...value, hybrid_boundary_margin: Math.min(1, Math.max(0, parsed)) });
+  };
+
+  const handleSuccessThresholdChange = (raw: string) => {
+    setDraft({ id: HEURISTIC_V2_SUCCESS_THRESHOLD_ID, raw });
+    onChange({
+      ...value,
+      heuristic_v2_success_threshold: raw.trim() === "" ? undefined : Number(raw),
+    });
+  };
+
+  // One write for everything the prompt dialog owns. The rubric arrives here rather than 至 the
+  // rubric handler because two onChange calls in one tick would both spread this render's `value`,
+  // so whichever landed second would drop the other's edit.
+  const handleClassificationPromptChange = ({
+    classificationPrompt,
+    classificationExamples,
+    classificationRubric: selectedRubric,
+  }: OpeningPromptSelection) => {
+    const rubricConfig: ClassifierLLMConfig = {
+      ...value.classifier_llm_config,
+      model: value.classifier_llm_config?.model ?? "",
+      timeout_ms: value.classifier_llm_config?.timeout_ms ?? DEFAULT_CLASSIFIER_TIMEOUT_MS,
+      classification_rubric: selectedRubric,
+    };
+    const nextValue: ComplexityRouterConfigValue = {
+      ...value,
+      ...(selectedRubric && { classifier_llm_config: rubricConfig }),
+      classification_prompt: classificationPrompt,
+      classification_examples: classificationExamples,
+    };
+    onChange(nextValue);
+  };
+
+  const handleClassifierReasoningEffortChange = (reasoningEffort: ReasoningEffort | undefined) => {
+    if (!value.classifier_llm_config) return;
+    const { reasoning_effort: _reasoningEffort, ...classifierLlmConfig } = value.classifier_llm_config;
+    onChange({
+      ...value,
+      classifier_llm_config:
+        reasoningEffort === undefined
+          ? classifierLlmConfig
+          : { ...classifierLlmConfig, reasoning_effort: reasoningEffort },
+    });
+  };
+
+  const handleClassifierTimeoutChange = (timeoutMs: number) => {
+    onChange({
+      ...value,
+      classifier_llm_config: {
+        ...value.classifier_llm_config,
+        model: value.classifier_llm_config?.model ?? "",
+        timeout_ms: timeoutMs,
+      },
+    });
+  };
+
+  const handleClassificationRubricChange = (classificationRubric: ClassificationRubric) => {
+    onChange({
+      ...value,
+      classifier_llm_config: {
+        ...value.classifier_llm_config,
+        model: value.classifier_llm_config?.model ?? "",
+        timeout_ms: value.classifier_llm_config?.timeout_ms ?? DEFAULT_CLASSIFIER_TIMEOUT_MS,
+        classification_rubric: classificationRubric,
+      },
+    });
+  };
+
+  const handleClassifierSystemPromptChange = (systemPrompt: string | undefined) => {
+    onChange({
+      ...value,
+      classifier_llm_config: {
+        ...value.classifier_llm_config,
+        model: value.classifier_llm_config?.model ?? "",
+        timeout_ms: value.classifier_llm_config?.timeout_ms ?? DEFAULT_CLASSIFIER_TIMEOUT_MS,
+        system_prompt: systemPrompt,
+      },
+    });
+  };
+
+  const handleClassifierFallbackChange = (fallback: ClassifierFallback) => {
+    onChange({ ...value, classifier_fallback: fallback });
+  };
+
+  const handleClassifierContextWindowSizeChange = (windowSize: number) => {
+    onChange({
+      ...value,
+      classifier_context_window_size: windowSize,
+    });
+  };
+
+  const handleClassifierContextBudgetCharsChange = (budgetChars: number) => {
+    onChange({
+      ...value,
+      classifier_context_budget_chars: budgetChars,
+    });
+  };
+
+  const handleClassifierIntegerChange = (
+    id: string,
+    raw: string,
+    minimum: number,
+    onCommit: (value: number) => void,
+  ) => {
+    setDraft({ id, raw });
+    const parsed = Number(raw);
+    if (raw.trim() === "" || !Number.isFinite(parsed)) return;
+    onCommit(Math.max(minimum, Math.round(parsed)));
+  };
+
+  const handleClassifierContextIncludeAssistantTurnsChange = (includeAssistantTurns: boolean) => {
+    onChange({
+      ...value,
+      classifier_context_include_assistant_turns: includeAssistantTurns,
+    });
+  };
+
+  return (
+    <>
+      {!advancedOnly && showSelection && (
+        <>
+          <ClassifierTypeRadios
+            value={value}
+            classifierType={classifierType}
+            onTypeChange={handleClassifierTypeChange}
+          />
+          <ClassifierPrimarySettings
+            value={value}
+            onChange={onChange}
+            modelOptions={modelOptions}
+            showValidationErrors={showValidationErrors}
+          />
+        </>
+      )}
+      {showLocalChecks && (
+        <div className="space-y-2">
+          <Label htmlFor="auto-router-local-checks">评判前的本地检查</Label>
+          <Select
+            items={[
+              { value: "llm", label: "始终使用评判模型" },
+              { value: "heuristic_first", label: "启发式优先" },
+              { value: "hybrid", label: "混合" },
+            ]}
+            value={classifierType}
+            onValueChange={(next) => {
+              if (next === "llm" || next === "heuristic_first" || next === "hybrid") handleClassifierTypeChange(next);
+            }}
+          >
+            <SelectTrigger id="auto-router-local-checks" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="llm">始终使用评判模型</SelectItem>
+              <SelectItem value="heuristic_first" disabled={Boolean(value.custom_tier_set)}>
+                启发式优先
+              </SelectItem>
+              <SelectItem value="hybrid" disabled={Boolean(value.custom_tier_set)}>
+                混合
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {showSelection && isHeuristicChain(classifierType) && (
+        <div className="mt-4 space-y-2">
+          <Label htmlFor="auto-router-local-heuristic">Judge 之前的启发式</Label>
+          <ClassifierMenu
+            id="auto-router-local-heuristic"
+            label="Judge 之前的启发式"
+            selectedLabel={value.local_heuristic === "heuristic_v2" ? "Heuristic v2" : "启发式 v1（基于规则）"}
+            feature={value.local_heuristic === "heuristic_v2" ? "heuristic_v2" : undefined}
+            value={value.local_heuristic ?? "heuristic"}
+            onValueChange={(next) => {
+              if (next === "heuristic" || next === "heuristic_v2") onChange({ ...value, local_heuristic: next });
+            }}
+          >
+            <ClassifierOption
+              value="heuristic"
+              label="自定义指令和示例共享自定义层级额度"
+              description="使用可配置权重与关键词为请求打分"
+            />
+            <ClassifierOption
+              value="heuristic_v2"
+              label="Heuristic v2"
+              description="使用校准后的成功概率选择层级"
+              feature="heuristic_v2"
+            />
+          </ClassifierMenu>
+        </div>
+      )}
+
+      {showClassifier && classifierType === "custom" && (
+        <ClassifierPluginTimeoutField value={value} onChange={onChange} showValidationErrors={showValidationErrors} />
+      )}
+
+      {showHeuristic && heuristic === "heuristic_v2" && (
+        <div className="mt-4 space-y-2">
+          <Label htmlFor={HEURISTIC_V2_SUCCESS_THRESHOLD_ID} className="block font-semibold">
+            成功阈值
+          </Label>
+          <Input
+            id={HEURISTIC_V2_SUCCESS_THRESHOLD_ID}
+            type="text"
+            inputMode="decimal"
+            placeholder="Artifact 默认值"
+            value={successThresholdDraft ?? value.heuristic_v2_success_threshold?.toString() ?? ""}
+            onChange={(event) => handleSuccessThresholdChange(event.target.value)}
+            onBlur={() => {
+              if (!successThresholdError) setDraft(null);
+            }}
+            aria-invalid={Boolean(successThresholdError)}
+            aria-describedby={`${HEURISTIC_V2_SUCCESS_THRESHOLD_ID}-help${successThresholdError ? ` ${HEURISTIC_V2_SUCCESS_THRESHOLD_ID}-error` : ""}`}
+          />
+          <p id={`${HEURISTIC_V2_SUCCESS_THRESHOLD_ID}-help`} className="text-sm text-muted-foreground">
+            最低预测成功概率，取值 0 到 1。数值越高越倾向于更强大的层级。留空则
+            使用 Artifact 默认值
+          </p>
+          {successThresholdError && (
+            <p id={`${HEURISTIC_V2_SUCCESS_THRESHOLD_ID}-error`} className="text-sm text-destructive" role="alert">
+              {successThresholdError}
+            </p>
+          )}
+        </div>
+      )}
+
+      {showSelection && classifierType === "heuristic_first" && (
+        <div className="mt-4 space-y-2">
+          <Label htmlFor="auto-router-local-max-tier" className="block font-semibold">
+            Decide locally up to
+          </Label>
+          <Select
+            value={value.heuristic_first_max_tier}
+            onValueChange={(tier: unknown) => handleHeuristicFirstMaxTierChange(tier as string)}
+          >
+            <SelectTrigger id="auto-router-local-max-tier" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {HEURISTIC_FIRST_MAX_TIER_KEYS.map((tier) => (
+                <SelectItem key={tier} value={tier}>
+                  {effectiveTierLabel(tier, value.tier_labels)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">
+            {usesHeuristicV2(value)
+              ? "A tier that meets the success threshold and is at or below this limit routes locally. Higher tiers, or requests where no tier qualifies, go to the judge"
+              : "A request the scorer places at or below this tier routes locally. Higher tiers, or requests with no heuristic signal, go to the judge"}
+          </p>
+        </div>
+      )}
+
+      {showSelection && classifierType === "hybrid" && (
+        <div className="mt-4 space-y-2">
+          <Label htmlFor={HYBRID_BOUNDARY_MARGIN_ID} className="block font-semibold">
+            {usesHeuristicV2(value) ? "成功阈值余量" : "边界余量"}
+          </Label>
+          <Input
+            id={HYBRID_BOUNDARY_MARGIN_ID}
+            type="text"
+            inputMode="decimal"
+            value={
+              draft?.id === HYBRID_BOUNDARY_MARGIN_ID
+                ? draft.raw
+                : String(value.hybrid_boundary_margin ?? DEFAULT_HYBRID_BOUNDARY_MARGIN)
+            }
+            onChange={(event) => handleHybridBoundaryMarginChange(event.target.value)}
+            onBlur={() => setDraft(null)}
+            className="w-full"
+          />
+          <p className="text-sm text-muted-foreground">
+            {usesHeuristicV2(value)
+              ? "当选定层级或更低层级的成功概率落在成功阈值此余量内，或没有层级达到阈值时，使用 Judge"
+              : "A score further than this from every tier boundary routes on the scorer's own tier. A score closer than this, or a request with no heuristic signal, goes to the judge"}
+          </p>
+        </div>
+      )}
+
+      {showClassifier && classifierType === "jev" && (
+        <JevClassifierConfig value={value} onChange={onChange} section={jevSection} />
+      )}
+      {showClassifier && usesLlmClassifier(classifierType) && (
+        <div className="mt-4 space-y-3">
+          <ClassifierReasoningEffortSelect
+            model={classifierModel}
+            value={classifierReasoningEffort}
+            explicitlySupported={explicitlySupportedClassifierEfforts}
+            onChange={handleClassifierReasoningEffortChange}
+          />
+          <div>
+            <Label htmlFor={CLASSIFIER_TIMEOUT_ID} className="block mb-1 font-semibold">
+              Timeout (ms)
+            </Label>
+            <Input
+              id={CLASSIFIER_TIMEOUT_ID}
+              type="text"
+              inputMode="numeric"
+              value={
+                draft?.id === CLASSIFIER_TIMEOUT_ID
+                  ? draft.raw
+                  : String(value.classifier_llm_config?.timeout_ms ?? DEFAULT_CLASSIFIER_TIMEOUT_MS)
+              }
+              onChange={(event) =>
+                handleClassifierIntegerChange(
+                  CLASSIFIER_TIMEOUT_ID,
+                  event.target.value,
+                  1,
+                  handleClassifierTimeoutChange,
+                )
+              }
+              onBlur={() => setDraft(null)}
+              className="w-full"
+            />
+            <span className="text-xs text-muted-foreground">
+              分类器调用的最长等待时间，超时后调用失败并由下方的 Fallback 接管。
+            </span>
+          </div>
+          <ClassifierCircuitBreakerConfig
+            value={value.classifier_llm_config ?? { model: "", timeout_ms: DEFAULT_CLASSIFIER_TIMEOUT_MS }}
+            onChange={(classifier_llm_config) => onChange({ ...value, classifier_llm_config })}
+          />
+          <ClassifierVisionConfig
+            value={value.classifier_llm_config ?? { model: "", timeout_ms: DEFAULT_CLASSIFIER_TIMEOUT_MS }}
+            onChange={(classifier_llm_config) => onChange({ ...value, classifier_llm_config })}
+          />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <strong className="font-semibold">分类器提示词</strong>
+              <SimpleTooltip content="每种评分标准都使用相同的四个层级。它们的区别在于向分类器展示层级边界的示例，商务评分标准还会为商务流量重写层级定义。在提示词编辑器中选择评分标准，并编写你自己的开场指令和校准示例。">
+                <Info className="size-4 text-muted-foreground" />
+              </SimpleTooltip>
+            </div>
+            <AutoRouterAllowanceNote
+              feature="tier_or_classifier_prompt"
+              label="自定义指令和示例共享自定义层级额度"
+            />
+            {!value.custom_tier_set && usesCustomPrompt ? (
+              <ClassifierPromptEditor
+                systemPrompt={value.classifier_llm_config?.system_prompt}
+                onChange={handleClassifierSystemPromptChange}
+                contextWindowSize={value.classifier_context_window_size ?? DEFAULT_CLASSIFIER_CONTEXT_WINDOW_SIZE}
+                tierLabels={value.tier_labels}
+                classificationRubric={classificationRubric}
+              />
+            ) : (
+              <OpeningPromptEditor
+                classificationPrompt={value.classification_prompt}
+                classificationExamples={value.classification_examples}
+                onChange={handleClassificationPromptChange}
+                tierSource={
+                  value.custom_tier_set
+                    ? { kind: "custom", tierRows: value.custom_tier_set.tiers }
+                    : {
+                        kind: "builtIn",
+                        tierLabels: value.tier_labels,
+                        classificationRubric,
+                        rubricRestriction: restrictedBy(value, "classificationRubric")?.reason,
+                      }
+                }
+                contextWindowSize={value.classifier_context_window_size ?? DEFAULT_CLASSIFIER_CONTEXT_WINDOW_SIZE}
+              />
+            )}
+          </div>
+        </div>
+      )}
+      {showClassifier && usesClassifierContext(classifierType) && (
+        <div className="mt-4 space-y-3">
+          <RestrictedSection heading="如果分类器失败" by={restrictedBy(value, "classifierFallback")}>
+            <RadioGroup
+              value={value.classifier_fallback ?? DEFAULT_CLASSIFIER_FALLBACK}
+              onValueChange={(fallback: unknown) => handleClassifierFallbackChange(fallback as ClassifierFallback)}
+            >
+              <div className="inline-flex flex-col gap-2">
+                <Label className="items-start font-normal leading-normal">
+                  <RadioGroupItem value="heuristic" className="mt-0.5" />
+                  <span>
+                    <span>使用启发式评分</span>{" "}
+                    <span className="text-muted-foreground">——适用于分类器也在评估复杂度的场景</span>
+                  </span>
+                </Label>
+                <Label className="items-start font-normal leading-normal has-data-disabled:cursor-not-allowed has-data-disabled:opacity-50">
+                  <RadioGroupItem value="default_model" disabled={!hasDefaultModel} className="mt-0.5" />
+                  <SimpleTooltip
+                    content={
+                      hasDefaultModel
+                        ? "在「默认模型」选择框中更改。"
+                        : "要使用该选项，请在此路由器上设置一个默认模型"
+                    }
+                  >
+                    <span>
+                      <span>路由到默认模型{defaultModel ? ` (${defaultModel})` : ""}</span>{" "}
+                      <span className="text-muted-foreground">
+                        ——适用于你的提示词评估的不是复杂度的场景
+                      </span>
+                    </span>
+                  </SimpleTooltip>
+                </Label>
+              </div>
+            </RadioGroup>
+            <span className="block text-xs text-muted-foreground">
+              在分类器调用出错、超时或返回无法解析的响应时生效。
+            </span>
+          </RestrictedSection>
+          <div>
+            <Label htmlFor={CLASSIFIER_CONTEXT_WINDOW_SIZE_ID} className="block mb-1 font-semibold">
+              上下文窗口大小
+            </Label>
+            <Input
+              id={CLASSIFIER_CONTEXT_WINDOW_SIZE_ID}
+              type="text"
+              inputMode="numeric"
+              value={
+                draft?.id === CLASSIFIER_CONTEXT_WINDOW_SIZE_ID
+                  ? draft.raw
+                  : String(value.classifier_context_window_size ?? DEFAULT_CLASSIFIER_CONTEXT_WINDOW_SIZE)
+              }
+              onChange={(event) =>
+                handleClassifierIntegerChange(
+                  CLASSIFIER_CONTEXT_WINDOW_SIZE_ID,
+                  event.target.value,
+                  0,
+                  handleClassifierContextWindowSizeChange,
+                )
+              }
+              onBlur={() => setDraft(null)}
+              className="w-full"
+            />
+            <span className="text-xs text-muted-foreground">
+              发送给分类器 Provider 的历史用户轮数，不包括工具输出和框架提醒。
+              LLM 和 Jev 默认为 3 轮；Jev 会将它们发送到配置的 TypeSafe Endpoint。设为 0 则不发送
+              对话历史。当前消息和选中的系统文本仍会发送。
+            </span>
+          </div>
+          <div>
+            <Label htmlFor={CLASSIFIER_CONTEXT_BUDGET_CHARS_ID} className="block mb-1 font-semibold">
+              上下文字符预算
+            </Label>
+            <Input
+              id={CLASSIFIER_CONTEXT_BUDGET_CHARS_ID}
+              type="text"
+              inputMode="numeric"
+              value={
+                draft?.id === CLASSIFIER_CONTEXT_BUDGET_CHARS_ID
+                  ? draft.raw
+                  : String(value.classifier_context_budget_chars ?? DEFAULT_CLASSIFIER_CONTEXT_BUDGET_CHARS)
+              }
+              onChange={(event) =>
+                handleClassifierIntegerChange(
+                  CLASSIFIER_CONTEXT_BUDGET_CHARS_ID,
+                  event.target.value,
+                  0,
+                  handleClassifierContextBudgetCharsChange,
+                )
+              }
+              onBlur={() => setDraft(null)}
+              className="w-full"
+            />
+            <span className="text-xs text-muted-foreground">
+              发送给分类器的历史对话总字符数。按从新到旧的顺序取轮次，能完整放下就整轮引用，
+              因此短对话不会被截断。
+            </span>
+            {contextBudgetQuotesNothing && (
+              <span className="block text-xs text-destructive">
+                Under {MIN_QUOTED_CONTEXT_TURN_CHARS} characters there is no room to quote a turn that does not already
+                长对话会在完全没有上下文的情况下到达分类器。将上下文窗口大小设为 0
+                以明确关闭上下文。
+              </span>
+            )}
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Switch
+                checked={value.classifier_context_include_assistant_turns ?? false}
+                onCheckedChange={handleClassifierContextIncludeAssistantTurnsChange}
+                size="sm"
+                aria-label="包含助手轮次"
+              />
+              <strong className="font-semibold">包含助手轮次</strong>
+              <SimpleTooltip content="默认关闭。开启后会改变已有路由器的层级决策，从而影响花费，并会将助手文本发送给分类器模型，它可能与被路由的模型属于不同的供应商。">
+                <Info className="size-4 text-muted-foreground" />
+              </SimpleTooltip>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              Let the classifier read the assistant&apos;s replies, so difficulty the model stated rather than the user
+              stays visible: a plan the assistant calls complex, approved with &quot;yes&quot;, is classified on the
+              work being approved. Context Window Size then counts the last N turns across both roles rather than the
+              last N user turns.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {showHeuristic && heuristic === "heuristic" && (
+        <div className="mt-4">
+          <div className="flex items-center gap-2 mb-1">
+            <strong className="font-semibold">自定义技术关键词</strong>
+            <SimpleTooltip content="追加到内置技术关键词列表的领域专有术语。包含这些术语的提示词会在技术维度上得分更高，并路由到更强大的 模型。">
+              <Info className="size-4 text-muted-foreground" />
+            </SimpleTooltip>
+          </div>
+          <span className="block mb-2 text-xs text-muted-foreground">
+            可选: Add terms to the built-in list to improve classification accuracy on the technical dimension.
+            (e.g., udp, kafka, terraform).
+          </span>
+          <MultiSelect
+            options={(customTechnicalKeywords ?? []).map((keyword) => ({ label: keyword, value: keyword }))}
+            value={customTechnicalKeywords ?? []}
+            onValueChange={(keywords: string[]) =>
+              onCustomTechnicalKeywordsChange?.(
+                Array.from(
+                  new Set(keywords.flatMap((keyword) => keyword.split(",").map((part) => part.trim())).filter(Boolean)),
+                ),
+              )
+            }
+            placeholder="输入关键词并按回车"
+            emptyText="输入以添加关键词"
+            allowCustomValues
+            className="w-full"
+          />
+        </div>
+      )}
+
+      {showHeuristic && heuristic === "heuristic" && (
+        <>
+          {heuristicScoringRole(value) === "decides" && (
+            <AutoRouterAllowanceNote feature="heuristic_tuning" label="自定义评分规则" />
+          )}
+          <HeuristicScoringConfig value={value} onChange={onChange} />
+          <section className="mt-4 space-y-3">
+            <h4 className="font-semibold">启发式关键词覆盖</h4>
+            <HeuristicKeywordOverrides value={value} onChange={onChange} />
+          </section>
+        </>
+      )}
+      {showHeuristic && <HowClassificationWorks value={value} />}
+    </>
+  );
+};
+
+export default ClassificationMethodConfig;

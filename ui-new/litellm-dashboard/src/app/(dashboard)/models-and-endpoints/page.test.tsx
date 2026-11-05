@@ -1,0 +1,219 @@
+/* @vitest-environment jsdom */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import ModelsAndEndpointsPage from "./page";
+
+vi.mock("./panels/AllModelsPanel", () => ({ default: () => <div data-testid="panel-all-models" /> }));
+vi.mock("./panels/AddModelPanel", () => ({ default: () => <div data-testid="panel-add" /> }));
+vi.mock("./panels/AutoRoutersTabPanel", () => ({ default: () => <div data-testid="panel-auto-routers" /> }));
+vi.mock("./panels/LlmCredentialsPanel", () => ({ default: () => <div data-testid="panel-credentials" /> }));
+vi.mock("./panels/PassThroughPanel", () => ({ default: () => <div data-testid="panel-pass-through" /> }));
+vi.mock("./panels/HealthStatusPanel", () => ({ default: () => <div data-testid="panel-health" /> }));
+vi.mock("./panels/ModelRetrySettingsPanel", () => ({ default: () => <div data-testid="panel-retry" /> }));
+vi.mock("./panels/ModelGroupAliasPanel", () => ({ default: () => <div data-testid="panel-alias" /> }));
+vi.mock("./panels/PriceDataPanel", () => ({ default: () => <div data-testid="panel-price" /> }));
+vi.mock("./panels/AccessGroupBudgetsPanel", () => ({ default: () => <div data-testid="panel-budgets" /> }));
+
+const detailState = { modelId: null as string | null, teamId: null as string | null };
+vi.mock("./detailNavigation", () => ({
+  useModelDetailRouting: () => ({ ...detailState, close: vi.fn(), openModel: vi.fn(), openTeam: vi.fn() }),
+}));
+
+vi.mock("@/components/molecules/DecisionModelsBanner", () => ({
+  default: () => <section aria-label="Decision models" />,
+}));
+vi.mock("@/components/model_info_view", () => ({
+  default: ({ modelId }: { modelId: string }) => <div data-testid="model-info">model:{modelId}</div>,
+}));
+const teamInfoProps = vi.hoisted(() => vi.fn());
+vi.mock("@/components/team/TeamInfo", () => ({
+  default: (props: { teamId: string; is_team_admin: boolean; is_proxy_admin: boolean }) => {
+    teamInfoProps(props);
+    return (
+      <div data-testid="team-info" data-team-admin={String(props.is_team_admin)}>
+        team:{props.teamId}
+      </div>
+    );
+  },
+}));
+
+const mockUseAuthorized = vi.fn();
+vi.mock("@/app/(dashboard)/hooks/useAuthorized", () => ({ default: () => mockUseAuthorized() }));
+vi.mock("@/app/(dashboard)/hooks/teams/useTeams", () => ({ useTeams: () => ({ data: [] }) }));
+vi.mock("@/app/(dashboard)/hooks/uiSettings/useUISettings", () => ({
+  useUISettings: () => ({ data: { values: {} } }),
+}));
+vi.mock("./useModelDashboardData", () => ({
+  useModelDashboardData: () => ({ availableModelAccessGroups: [], allModelsOnProxy: [], availableModelGroups: [] }),
+}));
+
+const ADMIN = { accessToken: "at", token: "t", userRole: "Admin", userId: "u1", premiumUser: false, isViewOnly: false };
+const NON_ADMIN = {
+  accessToken: "at",
+  token: "t",
+  userRole: "内部用户",
+  userId: "u1",
+  premiumUser: false,
+  isViewOnly: false,
+};
+// A proxy_admin_viewer session: effectiveSessionRole masquerades the role as "Admin".
+const VIEW_ONLY_ADMIN = { ...ADMIN, isViewOnly: true };
+
+const renderPage = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ModelsAndEndpointsPage />
+    </QueryClientProvider>,
+  );
+};
+
+describe("ModelsAndEndpointsPage", () => {
+  beforeEach(() => {
+    detailState.modelId = null;
+    detailState.teamId = null;
+    mockUseAuthorized.mockReturnValue(ADMIN);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
+  it("keeps the 自动路由 tab for a view-only admin session", () => {
+    renderPage();
+    expect(screen.getByRole("tab", { name: "全部模型" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "LLM 凭证" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "健康状态" })).toBeInTheDocument();
+    expect(screen.getByTestId("panel-all-models")).toBeInTheDocument();
+  });
+
+  it("switches tabs in-memory, mounting only the active panel", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole("tab", { name: "健康状态" }));
+    expect(screen.getByTestId("panel-health")).toBeInTheDocument();
+    expect(screen.queryByTestId("panel-all-models")).not.toBeInTheDocument();
+  });
+
+  it("does not show a view-only session the decision models banner, whose Playground it cannot open", () => {
+    mockUseAuthorized.mockReturnValue(VIEW_ONLY_ADMIN);
+    renderPage();
+    expect(screen.queryByRole("region", { name: "Decision models" })).not.toBeInTheDocument();
+  });
+
+  it("renders the model detail overlay from the ?model drill-in and hides the tabs", () => {
+    detailState.modelId = "abc-123";
+    renderPage();
+    expect(screen.getByTestId("model-info")).toHaveTextContent("model:abc-123");
+    expect(screen.queryByRole("tab", { name: "全部模型" })).not.toBeInTheDocument();
+  });
+
+  it("renders the team detail overlay from the ?team drill-in with admin edit rights", () => {
+    detailState.teamId = "team-9";
+    renderPage();
+    expect(screen.getByTestId("team-info")).toHaveTextContent("team:team-9");
+    expect(screen.getByTestId("team-info")).toHaveAttribute("data-team-admin", "true");
+  });
+
+  it("passes is_proxy_admin for an admin session on the ?team drill-in", () => {
+    detailState.teamId = "team-a1b2";
+    renderPage();
+    expect(teamInfoProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ is_proxy_admin: true, is_team_admin: true }),
+    );
+  });
+
+  it("opens the ?team drill-in without edit rights for a view-only admin", () => {
+    mockUseAuthorized.mockReturnValue(VIEW_ONLY_ADMIN);
+    detailState.teamId = "team-9";
+    renderPage();
+    expect(screen.getByTestId("team-info")).toHaveTextContent("team:team-9");
+    expect(screen.getByTestId("team-info")).toHaveAttribute("data-team-admin", "false");
+    expect(teamInfoProps).toHaveBeenLastCalledWith(expect.objectContaining({ is_proxy_admin: false }));
+  });
+
+  it("hides admin-only tabs for a non-admin user", () => {
+    mockUseAuthorized.mockReturnValue(NON_ADMIN);
+    renderPage();
+    expect(screen.queryByRole("tab", { name: "LLM 凭证" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "健康状态" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the full admin tab order for a real admin", () => {
+    renderPage();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "全部模型",
+      "添加模型",
+      "自动路由器测试版",
+      "LLM 凭证",
+      "透传端点",
+      "健康状态",
+      "模型重试设置",
+      "Model Group 别名",
+      "模型访问组预算测试版",
+      "价格数据重载",
+    ]);
+  });
+
+  it("hides the admin write-form tabs from a view-only admin, keeping the read views", () => {
+    mockUseAuthorized.mockReturnValue(VIEW_ONLY_ADMIN);
+    renderPage();
+    expect(screen.getByRole("tab", { name: "全部模型" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "健康状态" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "LLM 凭证" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "透传端点" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "模型重试设置" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Model Group 别名" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Model Access Group Budgets/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "价格数据重载" })).not.toBeInTheDocument();
+  });
+
+  // POST /model/new 403s a proxy_admin_viewer, so the form's tab must not render for one.
+  it("hides the Add Model tab for a view-only admin session", () => {
+    mockUseAuthorized.mockReturnValue(VIEW_ONLY_ADMIN);
+    renderPage();
+    expect(screen.queryByRole("tab", { name: "添加模型" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "全部模型" })).toBeInTheDocument();
+  });
+
+  // Read parity: the Auto-Routers list stays reachable for a view-only admin; only the
+  // create affordance inside it is withheld, which AutoRoutersTabPanel decides.
+  it("keeps the 自动路由 tab for a view-only admin session", () => {
+    mockUseAuthorized.mockReturnValue(VIEW_ONLY_ADMIN);
+    renderPage();
+    expect(screen.getByRole("tab", { name: /自动路由器/ })).toBeInTheDocument();
+  });
+
+  // Auto-routers are excluded from the Deployed Models table, so this tab is their home: the only
+  // place in the product to list, create, edit or delete one.
+  describe("自动路由 tab", () => {
+    it("sits third, after Deployed Models and Add Model", () => {
+      renderPage();
+
+      const tabs = screen.getAllByRole("tab").map((tab) => tab.textContent);
+      expect(tabs[0]).toContain("全部模型");
+      expect(tabs[1]).toBe("添加模型");
+      expect(tabs[2]).toContain("自动路由器");
+      expect(tabs[2]).toContain("测试版");
+    });
+
+    it("renders its panel when selected", async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.click(screen.getByRole("tab", { name: /自动路由器/ }));
+      expect(screen.getByTestId("panel-auto-routers")).toBeInTheDocument();
+    });
+
+    it("is hidden from non-admins, who cannot write models", () => {
+      mockUseAuthorized.mockReturnValue(NON_ADMIN);
+      renderPage();
+
+      expect(screen.queryByRole("tab", { name: /自动路由器/ })).not.toBeInTheDocument();
+    });
+  });
+});

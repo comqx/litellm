@@ -147,6 +147,16 @@ crash.*.log
 .coverage
 
 ui/litellm-dashboard/out/
+
+# ui-new local build output and deploy config. Kept on disk only.
+ui-new/litellm-dashboard/.next/
+ui-new/litellm-dashboard/out/
+ui-new/secrets.yaml
+ui-new/public-values.yaml
+ui-new/httproute.yaml
+ui-new/litellm-new-ui.yaml
+ui-new/deploy.sh
+
 litellm.log
 
 .coverage-rust

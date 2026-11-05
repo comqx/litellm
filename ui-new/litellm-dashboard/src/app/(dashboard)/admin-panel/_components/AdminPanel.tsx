@@ -1,0 +1,441 @@
+/**
+ * Allow proxy admin to add other people to view global spend
+ * Use this to avoid sharing master key with others
+ */
+import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
+import { Alert, AlertDescription, AlertTitle } from "@/components/shared/Alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Info, TriangleAlert } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useBaseUrl } from "@/components/constants";
+import { toast } from "@/lib/toast";
+import { addAllowedIP, deleteAllowedIP, getAllowedIPs, getSSOSettings } from "@/components/networking";
+import SCIMConfig from "@/components/SCIM";
+import LoggingSettings from "@/components/Settings/AdminSettings/LoggingSettings/LoggingSettings";
+import SSOSettings from "@/components/Settings/AdminSettings/SSOSettings/SSOSettings";
+import UISettings from "@/components/Settings/AdminSettings/UISettings/UISettings";
+import TeamAdminEditableFieldsSettings from "@/components/Settings/AdminSettings/UISettings/TeamAdminEditableFieldsSettings";
+import UserBannerSettings from "@/components/Settings/AdminSettings/UserBannerSettings/UserBannerSettings";
+import CyberArk from "@/components/Settings/AdminSettings/CyberArk/CyberArk";
+import HashicorpVault from "@/components/Settings/AdminSettings/HashicorpVault/HashicorpVault";
+import PluginSettings from "@/components/Settings/AdminSettings/PluginSettings/PluginSettings";
+import WebSearchInterceptionSettings from "@/components/Settings/AdminSettings/WebSearchInterceptionSettings/WebSearchInterceptionSettings";
+import SSOModals from "@/components/SSOModals";
+import {
+  emptySSOSettingsFormValues,
+  useSSOSettingsForm,
+  type SSOSettingsFormValues,
+} from "@/components/Settings/AdminSettings/SSOSettings/Modals/BaseSSOSettingsForm";
+import UIAccessControlForm from "@/components/UIAccessControlForm";
+import { z } from "zod";
+import { FieldGroup } from "@/components/ui/field";
+import { FormField } from "@/components/shared/form/FormField";
+import { Input } from "@/components/ui/input";
+import { useZodForm } from "@/lib/forms/useZodForm";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const allowedIPSchema = z.object({
+  ip: z.string().min(1, "请输入 IP 地址"),
+});
+
+type AllowedIPFormValues = z.infer<typeof allowedIPSchema>;
+
+const AddAllowedIPForm = ({ onSubmit }: { onSubmit: (values: AllowedIPFormValues) => Promise<void> }) => {
+  const form = useZodForm(allowedIPSchema, { defaultValues: { ip: "" } });
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <FieldGroup>
+        <FormField control={form.control} name="ip">
+          {({ ref, ...field }) => <Input ref={ref} placeholder="输入 IP 地址" {...field} />}
+        </FormField>
+        <div>
+          <Button type="submit">添加 IP 地址</Button>
+        </div>
+      </FieldGroup>
+    </form>
+  );
+};
+
+interface AdminPanelProps {
+  proxySettings?: any;
+}
+
+const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
+  const { premiumUser, accessToken, userId: userID } = useAuthorized();
+  const form = useSSOSettingsForm("admin-panel");
+  const [isAddSSOModalVisible, setIsAddSSOModalVisible] = useState(false);
+  const [isInstructionsModalVisible, setIsInstructionsModalVisible] = useState(false);
+  const [isAllowedIPModalVisible, setIsAllowedIPModalVisible] = useState(false);
+  const [isAddIPModalVisible, setIsAddIPModalVisible] = useState(false);
+  const [isDeleteIPModalVisible, setIsDeleteIPModalVisible] = useState(false);
+  const [isUIAccessControlModalVisible, setIsUIAccessControlModalVisible] = useState(false);
+  const [allowedIPs, setAllowedIPs] = useState<string[]>([]);
+  const [ipToDelete, setIPToDelete] = useState<string | null>(null);
+  const [ssoConfigured, setSsoConfigured] = useState<boolean>(false);
+
+  const baseUrl = useBaseUrl();
+  const all_ip_address_allowed = "允许所有 IP 地址";
+
+  let nonSssoUrl = baseUrl;
+  nonSssoUrl += "/fallback/login";
+
+  const checkSSOConfiguration = async () => {
+    if (accessToken) {
+      try {
+        const ssoData = await getSSOSettings(accessToken);
+
+        if (ssoData && ssoData.values) {
+          const hasGoogleSSO = ssoData.values.google_client_id && ssoData.values.google_client_secret;
+          const hasMicrosoftSSO = ssoData.values.microsoft_client_id && ssoData.values.microsoft_client_secret;
+          const hasGenericSSO = ssoData.values.generic_client_id && ssoData.values.generic_client_secret;
+
+          setSsoConfigured(hasGoogleSSO || hasMicrosoftSSO || hasGenericSSO);
+        } else {
+          setSsoConfigured(false);
+        }
+      } catch (error) {
+        console.error("Error checking SSO configuration:", error);
+        setSsoConfigured(false);
+      }
+    }
+  };
+
+  const handleShowAllowedIPs = async () => {
+    try {
+      if (premiumUser !== true) {
+        toast.fromError("此功能仅面向高级版用户，请升级你的账户。");
+        return;
+      }
+      if (accessToken) {
+        const data = await getAllowedIPs(accessToken);
+        setAllowedIPs(data && data.length > 0 ? data : [all_ip_address_allowed]);
+      } else {
+        setAllowedIPs([all_ip_address_allowed]);
+      }
+    } catch (error) {
+      console.error("Error fetching allowed IPs:", error);
+      toast.fromError(`获取允许的 IP 地址失败：${error}`);
+      setAllowedIPs([all_ip_address_allowed]);
+    } finally {
+      if (premiumUser === true) {
+        setIsAllowedIPModalVisible(true);
+      }
+    }
+  };
+
+  const handleAddIP = async (values: { ip: string }) => {
+    try {
+      if (accessToken) {
+        await addAllowedIP(accessToken, values.ip);
+        // Fetch the updated list of IPs
+        const updatedIPs = await getAllowedIPs(accessToken);
+        setAllowedIPs(updatedIPs);
+        toast.success("IP 地址添加成功");
+      }
+    } catch (error) {
+      console.error("Error adding IP:", error);
+      toast.fromError(`添加 IP 地址失败：${error}`);
+    } finally {
+      setIsAddIPModalVisible(false);
+    }
+  };
+
+  const handleDeleteIP = async (ip: string) => {
+    setIPToDelete(ip);
+    setIsDeleteIPModalVisible(true);
+  };
+
+  const confirmDeleteIP = async () => {
+    if (ipToDelete && accessToken) {
+      try {
+        await deleteAllowedIP(accessToken, ipToDelete);
+        // Fetch the updated list of IPs
+        const updatedIPs = await getAllowedIPs(accessToken);
+        setAllowedIPs(updatedIPs.length > 0 ? updatedIPs : [all_ip_address_allowed]);
+        toast.success("IP 地址删除成功");
+      } catch (error) {
+        console.error("Error deleting IP:", error);
+        toast.fromError(`删除 IP 地址失败：${error}`);
+      } finally {
+        setIsDeleteIPModalVisible(false);
+        setIPToDelete(null);
+      }
+    }
+  };
+
+  const handleAddSSOOk = () => {
+    setIsAddSSOModalVisible(false);
+    form.reset(emptySSOSettingsFormValues);
+    if (accessToken && premiumUser) {
+      checkSSOConfiguration();
+    }
+  };
+
+  const handleAddSSOCancel = () => {
+    setIsAddSSOModalVisible(false);
+    form.reset(emptySSOSettingsFormValues);
+  };
+
+  const handleShowInstructions = (formValues: SSOSettingsFormValues) => {
+    setIsAddSSOModalVisible(false);
+    setIsInstructionsModalVisible(true);
+  };
+
+  const handleInstructionsOk = () => {
+    setIsInstructionsModalVisible(false);
+    if (accessToken && premiumUser) {
+      checkSSOConfiguration();
+    }
+  };
+
+  const handleInstructionsCancel = () => {
+    setIsInstructionsModalVisible(false);
+    if (accessToken && premiumUser) {
+      checkSSOConfiguration();
+    }
+  };
+
+  useEffect(() => {
+    checkSSOConfiguration();
+  }, [accessToken, premiumUser, checkSSOConfiguration]);
+
+  const handleUIAccessControlOk = () => {
+    setIsUIAccessControlModalVisible(false);
+  };
+
+  const handleUIAccessControlCancel = () => {
+    setIsUIAccessControlModalVisible(false);
+  };
+
+  const tabItems = [
+    {
+      key: "sso-settings",
+      label: "SSO 设置",
+      children: <SSOSettings />,
+    },
+    {
+      key: "security-settings",
+      label: "安全设置",
+      children: (
+        <>
+          <Card className="block p-6">
+            <h3 className="mb-2 text-base font-semibold text-foreground">✨ 安全设置</h3>
+            <Alert variant="warning">
+              <TriangleAlert />
+              <AlertTitle>SSO 配置已弃用</AlertTitle>
+              <AlertDescription>
+                Editing SSO Settings on this page is deprecated and will be removed in a future version. Please use the
+                SSO Settings tab for SSO configuration.
+              </AlertDescription>
+            </Alert>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+                marginTop: "1rem",
+                marginLeft: "0.5rem",
+              }}
+            >
+              <div>
+                <Button style={{ width: "150px" }} onClick={() => setIsAddSSOModalVisible(true)}>
+                  {ssoConfigured ? "编辑 SSO 设置" : "添加 SSO"}
+                </Button>
+              </div>
+              <div>
+                <Button style={{ width: "150px" }} onClick={handleShowAllowedIPs}>
+                  允许的 IP
+                </Button>
+              </div>
+              <div>
+                <Button
+                  style={{ width: "150px" }}
+                  onClick={() =>
+                    premiumUser === true
+                      ? setIsUIAccessControlModalVisible(true)
+                      : toast.fromError("仅高级版用户可配置 UI 访问控制")
+                  }
+                >
+                  UI 访问控制
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          <div className="flex justify-start mb-4">
+            <SSOModals
+              isAddSSOModalVisible={isAddSSOModalVisible}
+              isInstructionsModalVisible={isInstructionsModalVisible}
+              handleAddSSOOk={handleAddSSOOk}
+              handleAddSSOCancel={handleAddSSOCancel}
+              handleShowInstructions={handleShowInstructions}
+              handleInstructionsOk={handleInstructionsOk}
+              handleInstructionsCancel={handleInstructionsCancel}
+              form={form}
+              accessToken={accessToken}
+              ssoConfigured={ssoConfigured}
+            />
+            <Dialog open={isAllowedIPModalVisible} onOpenChange={(open) => !open && setIsAllowedIPModalVisible(false)}>
+              <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[800px]">
+                <DialogHeader>
+                  <DialogTitle>管理允许的 IP 地址</DialogTitle>
+                </DialogHeader>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>IP 地址</TableHead>
+                      <TableHead className="text-right">操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allowedIPs.map((ip, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{ip}</TableCell>
+                        <TableCell className="text-right">
+                          {ip !== all_ip_address_allowed && (
+                            <Button onClick={() => handleDeleteIP(ip)} variant="destructive" size="sm">
+                              删除
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <DialogFooter>
+                  <Button className="mx-1" onClick={() => setIsAddIPModalVisible(true)}>
+                    添加 IP 地址
+                  </Button>
+                  <Button onClick={() => setIsAllowedIPModalVisible(false)}>关闭</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAddIPModalVisible} onOpenChange={(open) => !open && setIsAddIPModalVisible(false)}>
+              <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>添加允许的 IP 地址</DialogTitle>
+                </DialogHeader>
+                <AddAllowedIPForm onSubmit={handleAddIP} />
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeleteIPModalVisible} onOpenChange={(open) => !open && setIsDeleteIPModalVisible(false)}>
+              <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>确认删除</DialogTitle>
+                </DialogHeader>
+                <span className="text-sm text-foreground">
+                  确定要删除 IP 地址： {ipToDelete}?
+                </span>
+                <DialogFooter>
+                  <Button className="mx-1" onClick={() => confirmDeleteIP()}>
+                    是
+                  </Button>
+                  <Button onClick={() => setIsDeleteIPModalVisible(false)}>关闭</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* UI Access Control Modal */}
+            <Dialog
+              open={isUIAccessControlModalVisible}
+              onOpenChange={(open) => !open && handleUIAccessControlCancel()}
+            >
+              <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>UI 访问控制设置</DialogTitle>
+                </DialogHeader>
+                <UIAccessControlForm
+                  accessToken={accessToken}
+                  onSuccess={() => {
+                    handleUIAccessControlOk();
+                    toast.success("UI 访问控制设置更新成功");
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
+          <Alert variant="info">
+            <Info />
+            <AlertTitle>不使用 SSO 登录</AlertTitle>
+            <AlertDescription>
+              If you need to login without sso, you can access{" "}
+              <a href={nonSssoUrl} target="_blank" rel="noopener noreferrer">
+                <b>{nonSssoUrl}</b>{" "}
+              </a>
+            </AlertDescription>
+          </Alert>
+        </>
+      ),
+    },
+    {
+      key: "scim",
+      label: "SCIM",
+      children: <SCIMConfig accessToken={accessToken} userID={userID} proxySettings={proxySettings} />,
+    },
+    {
+      key: "ui-settings",
+      label: "UI 设置",
+      children: (
+        <div className="flex flex-col gap-4">
+          <UISettings />
+          <TeamAdminEditableFieldsSettings />
+          <UserBannerSettings />
+        </div>
+      ),
+    },
+    {
+      key: "logging-settings",
+      label: "日志设置",
+      children: <LoggingSettings />,
+    },
+    {
+      key: "hashicorp-vault",
+      label: "Hashicorp Vault",
+      children: <HashicorpVault />,
+    },
+    {
+      key: "cyberark",
+      label: "CyberArk Conjur",
+      children: <CyberArk />,
+    },
+    {
+      key: "plugins",
+      label: "插件",
+      children: <PluginSettings />,
+    },
+    {
+      key: "web-search-interception",
+      label: "Web 搜索拦截",
+      children: <WebSearchInterceptionSettings />,
+    },
+  ];
+
+  return (
+    <div className="w-full m-2 mt-2 p-8">
+      <h2 className="mb-2 text-base font-semibold text-foreground">管理员访问</h2>
+      <p className="mb-4 text-sm text-foreground">前往「内部用户」页面添加其他管理员。</p>
+      <Tabs defaultValue={tabItems[0].key}>
+        <TabsList variant="line" className="mb-4 h-auto flex-wrap">
+          {tabItems.map((item) => (
+            <TabsTrigger key={item.key} value={item.key} className="flex-none">
+              {item.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {tabItems.map((item) => (
+          <TabsContent key={item.key} value={item.key}>
+            {item.children}
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
+  );
+};
+
+export default AdminPanel;

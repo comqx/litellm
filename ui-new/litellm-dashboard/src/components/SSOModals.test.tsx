@@ -1,0 +1,583 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import SSOModals from "./SSOModals";
+import { useSSOSettingsForm } from "./Settings/AdminSettings/SSOSettings/Modals/BaseSSOSettingsForm";
+
+const user = () => userEvent.setup({ pointerEventsCheck: 0 });
+
+// Mock the networking functions
+vi.mock("./networking", () => ({
+  getSSOSettings: vi.fn(),
+  updateSSOSettings: vi.fn(),
+}));
+
+// Mock parseErrorMessage
+vi.mock("./shared/errorUtils", () => ({
+  parseErrorMessage: vi.fn((error) => error?.message || "An error occurred"),
+}));
+
+import { toast } from "@/lib/toast";
+import { getSSOSettings, updateSSOSettings } from "./networking";
+
+describe("SSOModals", () => {
+  it("should render the SSOModals component", () => {
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={() => {}}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={() => {}}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken={null}
+          ssoConfigured={false}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+    expect(screen.getByText("添加 SSO")).toBeInTheDocument();
+  });
+
+  it("should show validation error if proxy base url is not a valid URL", async () => {
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={() => {}}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={() => {}}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken={null}
+          ssoConfigured={false}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+
+    // Find and interact with the SSO provider select
+    await user().click(screen.getByLabelText("SSO 供应商"));
+    // Wait for dropdown and select Google
+    const googleOption = await screen.findByText("Google SSO");
+    await user().click(googleOption);
+
+    // Fill in the email field
+    const emailInput = screen.getByLabelText("Proxy 管理员邮箱");
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+
+    // Fill in an invalid URL
+    const urlInput = screen.getByLabelText("Proxy 基础 URL");
+    fireEvent.change(urlInput, { target: { value: "invalid-url" } });
+
+    // Submit the form
+    const saveButton = screen.getByText("保存");
+    fireEvent.click(saveButton);
+
+    // Check for validation error
+    await waitFor(
+      () => {
+        expect(screen.getByText("URL must start with http:// or https://")).toBeInTheDocument();
+      },
+      // The validation is based on a Promise, so we need to wait for it to resolve
+      { timeout: 5000 },
+    );
+  });
+
+  it("should show validation error if proxy base url ends with trailing slash", async () => {
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={() => {}}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={() => {}}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken={null}
+          ssoConfigured={false}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+
+    // Find and interact with the SSO provider select
+    await user().click(screen.getByLabelText("SSO 供应商"));
+    // Wait for dropdown and select Google
+    const googleOption = await screen.findByText("Google SSO");
+    await user().click(googleOption);
+
+    // Fill in the email field
+    const emailInput = screen.getByLabelText("Proxy 管理员邮箱");
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+
+    // Fill in a URL with trailing slash
+    const urlInput = screen.getByLabelText("Proxy 基础 URL") as HTMLInputElement;
+    fireEvent.change(urlInput, { target: { value: "https://example.com/" } });
+
+    // Submit the form
+    const saveButton = screen.getByText("保存");
+    fireEvent.click(saveButton);
+
+    // Check for validation error using findByText for async rendering
+    const errorMessage = await screen.findByText("URL 末尾不能带斜杠", {}, { timeout: 5000 });
+    expect(errorMessage).toBeInTheDocument();
+  });
+
+  it("should allow typing https:// without interfering with slashes", async () => {
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={() => {}}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={() => {}}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken={null}
+          ssoConfigured={false}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+
+    const urlInput = screen.getByLabelText("Proxy 基础 URL") as HTMLInputElement;
+
+    // Simulate user typing "https://"
+    fireEvent.change(urlInput, { target: { value: "h" } });
+    expect(urlInput.value).toBe("h");
+
+    fireEvent.change(urlInput, { target: { value: "ht" } });
+    expect(urlInput.value).toBe("ht");
+
+    fireEvent.change(urlInput, { target: { value: "http" } });
+    expect(urlInput.value).toBe("http");
+
+    fireEvent.change(urlInput, { target: { value: "https" } });
+    expect(urlInput.value).toBe("https");
+
+    fireEvent.change(urlInput, { target: { value: "https:" } });
+    expect(urlInput.value).toBe("https:");
+
+    fireEvent.change(urlInput, { target: { value: "https:/" } });
+    expect(urlInput.value).toBe("https:/");
+
+    fireEvent.change(urlInput, { target: { value: "https://" } });
+    expect(urlInput.value).toBe("https://");
+
+    // Continue typing the domain
+    fireEvent.change(urlInput, { target: { value: "https://example.com" } });
+    expect(urlInput.value).toBe("https://example.com");
+  });
+
+  it("should only show URL format error for incomplete URLs, not trailing slash error", async () => {
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={() => {}}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={() => {}}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken={null}
+          ssoConfigured={false}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+
+    // Find and interact with the SSO provider select
+    await user().click(screen.getByLabelText("SSO 供应商"));
+    // Wait for dropdown and select Google
+    const googleOption = await screen.findByText("Google SSO");
+    await user().click(googleOption);
+
+    // Fill in the email field
+    const emailInput = screen.getByLabelText("Proxy 管理员邮箱");
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+
+    // Fill in an incomplete URL like "http:"
+    const urlInput = screen.getByLabelText("Proxy 基础 URL");
+    fireEvent.change(urlInput, { target: { value: "http:" } });
+
+    // Submit the form
+    const saveButton = screen.getByText("保存");
+    fireEvent.click(saveButton);
+
+    // Check that only the URL format error appears (use findByText for async rendering)
+    const errorMessage = await screen.findByText("URL must start with http:// or https://", {}, { timeout: 3000 });
+    expect(errorMessage).toBeInTheDocument();
+
+    // Verify the trailing slash error does NOT appear
+    expect(screen.queryByText("URL 末尾不能带斜杠")).not.toBeInTheDocument();
+  });
+
+  it("should load existing SSO settings when modal opens", async () => {
+    const mockSSOData = {
+      values: {
+        google_client_id: "test-client-id",
+        google_client_secret: "test-client-secret",
+        proxy_base_url: "https://example.com",
+        user_email: "admin@example.com",
+        role_mappings: {
+          group_claim: "groups",
+          default_role: "internal_user",
+          roles: {
+            proxy_admin: ["admin-group"],
+            proxy_admin_viewer: ["viewer-group"],
+            internal_user: ["user-group"],
+            internal_user_viewer: ["readonly-group"],
+          },
+        },
+      },
+    };
+
+    (getSSOSettings as any).mockResolvedValue(mockSSOData);
+
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={() => {}}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={() => {}}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken="test-token"
+          ssoConfigured={false}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+
+    // Wait for the useEffect to load data and populate form
+    await waitFor(() => {
+      expect(getSSOSettings).toHaveBeenCalledWith("test-token");
+    });
+
+    // Check that form fields are populated with loaded data
+    await waitFor(() => {
+      const emailInput = screen.getByLabelText("Proxy 管理员邮箱") as HTMLInputElement;
+      expect(emailInput.value).toBe("admin@example.com");
+    });
+
+    const urlInput = screen.getByLabelText("Proxy 基础 URL") as HTMLInputElement;
+    expect(urlInput.value).toBe("https://example.com");
+
+    // Check that role mappings are populated
+    const groupClaimInput = screen.getByLabelText("组声明") as HTMLInputElement;
+    expect(groupClaimInput.value).toBe("groups");
+  });
+
+  it("should submit form with role mappings enabled", async () => {
+    const mockHandleShowInstructions = vi.fn();
+    (updateSSOSettings as any).mockResolvedValue({});
+    // Mock getSSOSettings to return empty data so form starts clean
+    (getSSOSettings as any).mockResolvedValue({ values: {} });
+
+    let formInstance: ReturnType<typeof useSSOSettingsForm> | null = null;
+
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+      formInstance = form;
+
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={() => {}}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={mockHandleShowInstructions}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken="test-token"
+          ssoConfigured={false}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+
+    // Wait for any initial loading to complete
+    await waitFor(() => {
+      expect(getSSOSettings).toHaveBeenCalledWith("test-token");
+    });
+
+    // Set the provider directly using the form to trigger conditional rendering
+    formInstance!.setValue("sso_provider", "okta");
+
+    // Wait for the "使用角色映射" checkbox to appear
+    await waitFor(() => {
+      expect(screen.getAllByLabelText("使用角色映射")[0]).toBeInTheDocument();
+    });
+
+    // Enable role mappings
+    const roleMappingsCheckbox = screen.getAllByLabelText("使用角色映射")[0];
+    await user().click(roleMappingsCheckbox);
+
+    // Fill required fields
+    const emailInput = screen.getByLabelText("Proxy 管理员邮箱");
+    fireEvent.change(emailInput, { target: { value: "admin@example.com" } });
+
+    const urlInput = screen.getByLabelText("Proxy 基础 URL");
+    fireEvent.change(urlInput, { target: { value: "https://example.com" } });
+
+    // Fill Okta specific fields
+    const clientIdInput = screen.getByLabelText("Generic 客户端 ID");
+    fireEvent.change(clientIdInput, { target: { value: "test-client-id" } });
+
+    const clientSecretInput = screen.getByLabelText("Generic 客户端密钥");
+    fireEvent.change(clientSecretInput, { target: { value: "test-client-secret" } });
+
+    const authEndpointInput = screen.getByLabelText("授权端点");
+    fireEvent.change(authEndpointInput, { target: { value: "https://example.okta.com/authorize" } });
+
+    const tokenEndpointInput = screen.getByLabelText("令牌端点");
+    fireEvent.change(tokenEndpointInput, { target: { value: "https://example.okta.com/token" } });
+
+    const userinfoEndpointInput = screen.getByLabelText("用户信息端点");
+    fireEvent.change(userinfoEndpointInput, { target: { value: "https://example.okta.com/userinfo" } });
+
+    // Fill role mapping fields
+    const groupClaimInput = screen.getByLabelText("组声明");
+    fireEvent.change(groupClaimInput, { target: { value: "groups" } });
+
+    const proxyAdminTeamsInput = screen.getByLabelText("Proxy 管理员团队");
+    fireEvent.change(proxyAdminTeamsInput, { target: { value: "admin-group, super-admin" } });
+
+    // Submit the form
+    const saveButton = screen.getByText("保存");
+    fireEvent.click(saveButton);
+
+    // Verify the API was called with correct payload including role mappings
+    await waitFor(() => {
+      expect(updateSSOSettings).toHaveBeenCalledWith("test-token", {
+        sso_provider: "okta",
+        user_email: "admin@example.com",
+        proxy_base_url: "https://example.com",
+        generic_client_id: "test-client-id",
+        generic_client_secret: "test-client-secret",
+        generic_authorization_endpoint: "https://example.okta.com/authorize",
+        generic_token_endpoint: "https://example.okta.com/token",
+        generic_userinfo_endpoint: "https://example.okta.com/userinfo",
+        role_mappings: {
+          provider: "generic",
+          group_claim: "groups",
+          default_role: "internal_user",
+          roles: {
+            proxy_admin: ["admin-group", "super-admin"],
+            proxy_admin_viewer: [],
+            internal_user: [],
+            internal_user_viewer: [],
+          },
+        },
+      });
+    });
+
+    expect(mockHandleShowInstructions).toHaveBeenCalled();
+  });
+
+  it("should submit SAML settings with the unsolicited toggle mapped to a 'true'/'false' string", async () => {
+    const mockHandleShowInstructions = vi.fn();
+    vi.mocked(updateSSOSettings).mockResolvedValue({});
+    vi.mocked(getSSOSettings).mockResolvedValue({ values: {} });
+
+    let formInstance: ReturnType<typeof useSSOSettingsForm> | null = null;
+
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+      formInstance = form;
+
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={() => {}}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={mockHandleShowInstructions}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken="test-token"
+          ssoConfigured={false}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+
+    await waitFor(() => {
+      expect(getSSOSettings).toHaveBeenCalledWith("test-token");
+    });
+
+    formInstance!.setValue("sso_provider", "saml");
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("IdP 元数据 URL")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Proxy 管理员邮箱"), {
+      target: { value: "admin@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Proxy 基础 URL"), {
+      target: { value: "https://proxy.example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("IdP 元数据 URL"), {
+      target: { value: "https://idp.example.com/metadata" },
+    });
+    fireEvent.change(screen.getByLabelText("SP 实体 ID"), {
+      target: { value: "https://proxy.example.com/sso/saml/metadata" },
+    });
+    await user().click(screen.getAllByLabelText("允许 IdP 发起的（非请求）响应")[0]);
+
+    fireEvent.click(screen.getByText("保存"));
+
+    await waitFor(() => {
+      expect(updateSSOSettings).toHaveBeenCalledWith(
+        "test-token",
+        expect.objectContaining({
+          sso_provider: "saml",
+          saml_idp_metadata_url: "https://idp.example.com/metadata",
+          saml_sp_entity_id: "https://proxy.example.com/sso/saml/metadata",
+          saml_allow_unsolicited: "true",
+        }),
+      );
+    });
+
+    expect(mockHandleShowInstructions).toHaveBeenCalled();
+  });
+
+  it("should show Clear button and clear SSO settings when configured", async () => {
+    const mockHandleAddSSOOk = vi.fn();
+    (updateSSOSettings as any).mockResolvedValue({});
+    (toast.success as any).mockImplementation(() => {});
+
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={mockHandleAddSSOOk}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={() => {}}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken="test-token"
+          ssoConfigured={true}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+
+    // Check that Clear button is visible when SSO is configured
+    const clearButton = screen.getByText("清除");
+    expect(clearButton).toBeInTheDocument();
+
+    // Click Clear button to open confirmation modal
+    fireEvent.click(clearButton);
+
+    // Confirm the clear action in the modal
+    const confirmButton = screen.getByText("确认清除");
+    fireEvent.click(confirmButton);
+
+    // Verify the clear API was called with null values
+    await waitFor(() => {
+      expect(updateSSOSettings).toHaveBeenCalledWith("test-token", {
+        google_client_id: null,
+        google_client_secret: null,
+        microsoft_client_id: null,
+        microsoft_client_secret: null,
+        microsoft_tenant: null,
+        generic_client_id: null,
+        generic_client_secret: null,
+        generic_authorization_endpoint: null,
+        generic_token_endpoint: null,
+        generic_userinfo_endpoint: null,
+        saml_idp_metadata_url: null,
+        saml_idp_metadata_xml: null,
+        saml_sp_entity_id: null,
+        saml_allow_unsolicited: null,
+        generic_scope: null,
+        proxy_base_url: null,
+        user_email: null,
+        sso_provider: null,
+        role_mappings: null,
+      });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("SSO 设置已清除");
+    expect(mockHandleAddSSOOk).toHaveBeenCalled();
+  });
+
+  it("renders provider logos in the SSO provider dropdown", async () => {
+    const TestWrapper = () => {
+      const form = useSSOSettingsForm("admin-panel");
+      return (
+        <SSOModals
+          isAddSSOModalVisible={true}
+          isInstructionsModalVisible={false}
+          handleAddSSOOk={() => {}}
+          handleAddSSOCancel={() => {}}
+          handleShowInstructions={() => {}}
+          handleInstructionsOk={() => {}}
+          handleInstructionsCancel={() => {}}
+          form={form}
+          accessToken={null}
+          ssoConfigured={false}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
+
+    await user().click(screen.getByLabelText("SSO 供应商"));
+
+    await waitFor(() => {
+      expect(screen.getAllByAltText("Google SSO logo").length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getAllByAltText("Google SSO logo")[0]).toHaveAttribute("src", expect.stringContaining("google.svg"));
+    expect(screen.getAllByAltText("Microsoft SSO logo")[0]).toHaveAttribute(
+      "src",
+      expect.stringContaining("microsoft_azure.svg"),
+    );
+    expect(screen.getAllByAltText("Okta / Auth0 SSO logo")[0]).toHaveAttribute(
+      "src",
+      expect.stringContaining("https://www.okta.com/"),
+    );
+    expect(screen.queryByAltText("Generic SSO logo")).not.toBeInTheDocument();
+  });
+});
