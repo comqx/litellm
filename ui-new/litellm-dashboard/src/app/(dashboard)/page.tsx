@@ -8,7 +8,7 @@ import {
   buildLoginUrlWithReturn,
   consumeReturnUrl,
   getLoginUrl,
-  isValidReturnUrl,
+  isDashboardReturnUrl,
   normalizeUrlForCompare,
   storeReturnUrl,
 } from "@/utils/returnUrlUtils";
@@ -29,13 +29,14 @@ function CreateKeyPageContent() {
 
   useEffect(() => {
     if (redirectToLogin) {
-      // Store the current URL so we can redirect back after login
-      storeReturnUrl();
-      // Build login URL with return URL parameter
       const baseLoginUrl = getLoginUrl(proxyBaseUrl || "");
-      const dest = buildLoginUrlWithReturn(baseLoginUrl);
-      // Replace instead of assigning to avoid back-button loops
-      window.location.replace(dest);
+      const path = window.location.pathname.replace(/\/+$/, "") || "/";
+      if (path === "/") {
+        window.location.replace(baseLoginUrl);
+        return;
+      }
+      storeReturnUrl();
+      window.location.replace(buildLoginUrlWithReturn(baseLoginUrl));
     }
   }, [redirectToLogin]);
 
@@ -60,7 +61,7 @@ function CreateKeyPageContent() {
 
     // Check for a stored return URL
     const returnUrl = consumeReturnUrl();
-    if (returnUrl && isValidReturnUrl(returnUrl)) {
+    if (returnUrl && isDashboardReturnUrl(returnUrl)) {
       // Inline origin check: only redirect to same-origin URLs to prevent open redirect.
       const safeUrl = new URL(returnUrl, window.location.origin);
       if (safeUrl.origin !== window.location.origin) {

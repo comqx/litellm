@@ -9,6 +9,7 @@ import {
   getReturnUrl,
   getReturnUrlFromParams,
   getStoredReturnUrl,
+  isDashboardReturnUrl,
   isValidReturnUrl,
   storeReturnUrl,
 } from "./returnUrlUtils";
@@ -400,6 +401,25 @@ describe("returnUrlUtils", () => {
 
       const returnUrl = consumeReturnUrl();
       expect(returnUrl).toBeNull();
+    });
+  });
+
+  describe("isDashboardReturnUrl", () => {
+    it("rejects the site root that loops back to login", () => {
+      expect(isDashboardReturnUrl("http://localhost:3000/")).toBe(false);
+      expect(isDashboardReturnUrl("http://localhost:3000")).toBe(false);
+    });
+
+    it("rejects the login page itself", () => {
+      expect(isDashboardReturnUrl("http://localhost:3000/ui/login/")).toBe(false);
+      expect(
+        isDashboardReturnUrl("http://localhost:3000/ui/login/?redirect_to=http%3A%2F%2Flocalhost%3A3000%2F"),
+      ).toBe(false);
+    });
+
+    it("accepts a dashboard path under /ui", () => {
+      expect(isDashboardReturnUrl("http://localhost:3000/ui/")).toBe(true);
+      expect(isDashboardReturnUrl("http://localhost:3000/ui/logs")).toBe(true);
     });
   });
 });

@@ -226,6 +226,27 @@ function isDevEnvironment(): boolean {
  * @param url - The URL to validate
  * @returns true if the URL is safe to redirect to
  */
+/**
+ * A return target the dashboard can open without bouncing back to login.
+ * The site root is the same static shell as the dashboard, but the session
+ * cookie is scoped to /ui, and a client navigation to / keeps the login
+ * page's empty auth state. Sending the user there loops / and /ui/login.
+ */
+export function isDashboardReturnUrl(url: string): boolean {
+  if (!isValidReturnUrl(url) || typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const path = parsed.pathname.length > 1 ? parsed.pathname.replace(/\/+$/, "") : parsed.pathname;
+    const leaf = path.split("/").pop() ?? "";
+    return path !== "/" && leaf !== "login";
+  } catch {
+    return false;
+  }
+}
+
 export function isValidReturnUrl(url: string): boolean {
   if (!url) {
     return false;

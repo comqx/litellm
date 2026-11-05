@@ -49,7 +49,10 @@ vi.mock("@/utils/returnUrlUtils", () => ({
   buildLoginUrlWithReturn: (u: string) => u,
   consumeReturnUrl: () => state.returnUrl,
   getLoginUrl: () => "/login",
-  isValidReturnUrl: () => true,
+  isDashboardReturnUrl: (url: string) => {
+    const path = new URL(url, "http://localhost:3000").pathname.replace(/\/+$/, "") || "/";
+    return path !== "/" && !path.endsWith("/login");
+  },
   normalizeUrlForCompare: (u: string) => u,
   storeReturnUrl: () => undefined,
 }));
