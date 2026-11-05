@@ -1,7 +1,7 @@
 "use client";
 
 import ModelHubTable from "@/components/AIHub/ModelHubTable";
-import PublicModelHub from "@/components/public_model_hub";
+import PublicModelHub from "@/components/publicModelHub/PublicAiHub";
 import { useChatShell } from "@/contexts/ChatShellContext";
 import { isAdminRole } from "@/utils/roles";
 
@@ -18,11 +18,9 @@ export default function ChatModelsPage() {
             premiumUser={premiumUser}
             userRole={userRole}
             canOpenPlayground={false}
-            canAddModels={false}
-            variant="chat"
           />
         ) : (
-          <PublicModelHub accessToken={accessToken} isEmbedded variant="chat" />
+          <PublicModelHub accessToken={accessToken} />
         )}
       </div>
     </div>

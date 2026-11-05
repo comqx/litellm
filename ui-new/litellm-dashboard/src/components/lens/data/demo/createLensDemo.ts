@@ -1,3 +1,4 @@
+import type { Job } from "@/components/lens/model/types";
 import { ApiError } from "@/lib/http/client";
 import type { TraceApi } from "@/components/lens/traces/api";
 import { rollUpAgents } from "@/components/lens/agents/agentRollup";
@@ -21,9 +22,9 @@ function demoLensApi(data: LensDemoData): LensApi {
     lenses: async () => ({ lenses: data.lenses, workers: [], tracing_enabled: true }),
     activity: async () => ({ traces: true, requests: false }),
     runs: (lensId, offset) => found(jobs(lensId)?.slice(offset)),
-    run: (lensId, jobId) => found(jobs(lensId)?.find((job) => job.id === jobId)),
+    run: (lensId, jobId) => found(jobs(lensId)?.find((job: Job) => job.id === jobId)),
     reviews: async (lensId, jobId, after) => {
-      const job = await found(jobs(lensId)?.find((item) => item.id === jobId));
+      const job = await found(jobs(lensId)?.find((item: Job) => item.id === jobId));
       return {
         reviews: job.reviews.slice(Math.max(0, after - (job.reviewed - job.reviews.length))),
         reviewed: job.reviewed,
