@@ -7,7 +7,7 @@ import Navbar from "@/components/navbar";
 import LoadingScreen from "@/components/common_components/LoadingScreen";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCurrentUser } from "@/app/(dashboard)/hooks/currentUser/useCurrentUser";
+import { currentUserEndsSession, useCurrentUser } from "@/app/(dashboard)/hooks/currentUser/useCurrentUser";
 import { redirectToLogin } from "@/app/(dashboard)/hooks/redirectToLogin";
 import { clearTokenCookies } from "@/utils/cookieUtils";
 import { decodeToken } from "@/utils/jwtUtils";
@@ -248,12 +248,10 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { accessToken, token, authLoading, passwordResetRequired } = useAuth();
   const session = decodeToken(token);
-  const { isLoading: currentUserLoading, isError: currentUserFailed } = useCurrentUser(
-    session?.key ?? null,
-    session?.auth_header_name,
-  );
+  const currentUser = useCurrentUser(session?.key ?? null, session?.auth_header_name);
   const isInvitationFlow = Boolean(searchParams.get("invitation_id"));
-  const identityPending = currentUserLoading || currentUserFailed;
+  const sessionEnded = currentUser.isError && currentUserEndsSession(currentUser.error);
+  const identityPending = currentUser.isLoading || sessionEnded;
 
   // Legacy invitation links point at /ui/?invitation_id=; the onboarding form now lives at its own
   // /onboarding route. Redirect once ui-config has loaded so uiHref resolves the SERVER_ROOT_PATH base.
@@ -272,10 +270,10 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   }, [authLoading, passwordResetRequired, pathname, router]);
 
   useEffect(() => {
-    if (!currentUserFailed || isInvitationFlow) return;
+    if (!sessionEnded || isInvitationFlow) return;
     clearTokenCookies();
     redirectToLogin();
-  }, [currentUserFailed, isInvitationFlow]);
+  }, [sessionEnded, isInvitationFlow]);
 
   if (authLoading || identityPending || isInvitationFlow) {
     return <LoadingScreen />;

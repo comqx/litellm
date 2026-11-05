@@ -23,6 +23,7 @@ import {
   isDashboardReturnUrl,
   isValidReturnUrl,
 } from "@/utils/returnUrlUtils";
+import { uiHref } from "@/utils/uiHref";
 import { CircleAlert, Info, TriangleAlert, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
@@ -129,7 +130,7 @@ function LoginPageContent() {
         params.delete("code");
         const cleanSearch = params.toString();
         window.history.replaceState(null, "", window.location.pathname + (cleanSearch ? `?${cleanSearch}` : ""));
-        window.location.assign("/ui/?login=success");
+        window.location.assign(uiHref(""));
       });
       return;
     }
@@ -181,10 +182,16 @@ function LoginPageContent() {
           // Update the worker context with the selected worker
           if (selectedWorker) {
             selectWorker(selectedWorker.worker_id);
-            window.location.assign("/ui/?login=success");
+            window.location.assign(uiHref(""));
           } else {
             const returnUrl = consumeReturnUrl();
-            const destination = returnUrl && isDashboardReturnUrl(returnUrl) ? returnUrl : data.redirect_url;
+            const serverUrl = data.redirect_url;
+            const destination =
+              returnUrl && isDashboardReturnUrl(returnUrl)
+                ? returnUrl
+                : serverUrl && isDashboardReturnUrl(serverUrl)
+                  ? serverUrl
+                  : uiHref("");
             window.location.assign(destination);
           }
         },

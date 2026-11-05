@@ -1,5 +1,6 @@
 import { skipToken, useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { fetchClient } from "@/lib/http/api";
+import { ApiError } from "@/lib/http/client";
 import { getAuthHeaderName } from "@/lib/http/runtime";
 import type { components } from "@/lib/http/schema";
 import { createQueryKeys } from "../common/queryKeysFactory";
@@ -7,6 +8,12 @@ import { createQueryKeys } from "../common/queryKeysFactory";
 export type CurrentUser = components["schemas"]["CurrentUserResponse"];
 
 const currentUserKeys = createQueryKeys("currentUser");
+
+export function currentUserEndsSession(error: unknown): boolean {
+  // 404 means this proxy has no /management/v1/users/me route.
+  // Logging that out sends a fresh sign-in straight back to the login page.
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
 
 const getCurrentUser = async (accessToken: string, authHeaderName: string): Promise<CurrentUser> => {
   const { data } = await fetchClient.GET("/management/v1/users/me", {

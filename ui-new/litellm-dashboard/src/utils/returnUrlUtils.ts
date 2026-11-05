@@ -162,12 +162,7 @@ export function getReturnUrlFromParams(): string | null {
 export function buildLoginUrlWithReturn(baseLoginUrl: string, returnUrl?: string): string {
   const url = returnUrl || getCurrentUrl();
 
-  if (!url) {
-    return baseLoginUrl;
-  }
-
-  // Don't add return URL if we're already on the login page
-  if (url.includes("/login")) {
+  if (!url || url.includes("/login") || !isDashboardReturnUrl(url)) {
     return baseLoginUrl;
   }
 
@@ -231,6 +226,9 @@ function isDevEnvironment(): boolean {
  * The site root is the same static shell as the dashboard, but the session
  * cookie is scoped to /ui, and a client navigation to / keeps the login
  * page's empty auth state. Sending the user there loops / and /ui/login.
+ * The username/password API lands on /ui?login=success with no trailing slash.
+ * That URL is the shell again, so storing it and sending the user back there
+ * loops /ui/login and /ui?login=success.
  */
 export function isDashboardReturnUrl(url: string): boolean {
   if (!isValidReturnUrl(url) || typeof window === "undefined") {
@@ -239,6 +237,9 @@ export function isDashboardReturnUrl(url: string): boolean {
 
   try {
     const parsed = new URL(url, window.location.origin);
+    if (parsed.searchParams.get("login") === "success") {
+      return false;
+    }
     const path = parsed.pathname.length > 1 ? parsed.pathname.replace(/\/+$/, "") : parsed.pathname;
     const leaf = path.split("/").pop() ?? "";
     return path !== "/" && leaf !== "login";

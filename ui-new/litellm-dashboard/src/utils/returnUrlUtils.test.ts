@@ -139,6 +139,20 @@ describe("returnUrlUtils", () => {
       expect(loginUrl).toBe("/ui/login?redirect_to=http%3A%2F%2Flocalhost%3A3000%2Fui%3Fcreate%3Dtrue%26team_id%3D123");
     });
 
+    it("does not send the user back to the sign-in success URL", () => {
+      Object.defineProperty(window, "location", {
+        value: {
+          ...window.location,
+          href: "http://localhost:3000/ui?login=success",
+          pathname: "/ui",
+          search: "?login=success",
+        },
+        writable: true,
+      });
+
+      expect(buildLoginUrlWithReturn("/ui/login/")).toBe("/ui/login/");
+    });
+
     it("should not add return URL if already on login page", () => {
       Object.defineProperty(window, "location", {
         value: {
@@ -420,6 +434,11 @@ describe("returnUrlUtils", () => {
     it("accepts a dashboard path under /ui", () => {
       expect(isDashboardReturnUrl("http://localhost:3000/ui/")).toBe(true);
       expect(isDashboardReturnUrl("http://localhost:3000/ui/logs")).toBe(true);
+    });
+
+    it("rejects the post-login landing that the sign-in API returns", () => {
+      expect(isDashboardReturnUrl("http://localhost:3000/ui?login=success")).toBe(false);
+      expect(isDashboardReturnUrl("http://localhost:3000/ui/?login=success")).toBe(false);
     });
   });
 });

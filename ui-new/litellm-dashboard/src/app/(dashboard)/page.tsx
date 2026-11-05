@@ -13,8 +13,41 @@ import {
   storeReturnUrl,
 } from "@/utils/returnUrlUtils";
 import { legacyPageRedirectHref } from "@/app/(dashboard)/legacyPageRoutes";
+import { uiHref } from "@/utils/uiHref";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
+
+function uiEntryHref(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const home = uiHref("");
+  if (home === "/" || home === "") {
+    return null;
+  }
+  const homeUrl = new URL(home, window.location.origin);
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  const homePath = homeUrl.pathname.replace(/\/+$/, "") || "/";
+  if (path !== "/" && path !== homePath) {
+    return null;
+  }
+  const params = new URLSearchParams(window.location.search || "");
+  const hadLoginSuccess = params.get("login") === "success";
+  if (hadLoginSuccess) {
+    params.delete("login");
+  }
+  const needsSlash = path === "/" || window.location.pathname !== homeUrl.pathname;
+  if (!hadLoginSuccess && !needsSlash) {
+    return null;
+  }
+  const next = new URL(homeUrl.pathname, window.location.origin);
+  params.forEach((value, key) => {
+    next.searchParams.append(key, value);
+  });
+  const target = `${next.pathname}${next.search}`;
+  const here = `${window.location.pathname}${window.location.search}`;
+  return target === here ? null : target;
+}
 
 function CreateKeyPageContent() {
   const { authLoading, token } = useAuth();
@@ -28,16 +61,19 @@ function CreateKeyPageContent() {
   const redirectToLogin = authLoading === false && token === null;
 
   useEffect(() => {
-    if (redirectToLogin) {
-      const baseLoginUrl = getLoginUrl(proxyBaseUrl || "");
-      const path = window.location.pathname.replace(/\/+$/, "") || "/";
-      if (path === "/") {
-        window.location.replace(baseLoginUrl);
-        return;
-      }
-      storeReturnUrl();
-      window.location.replace(buildLoginUrlWithReturn(baseLoginUrl));
+    const target = uiEntryHref();
+    if (target) {
+      window.location.replace(target);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!redirectToLogin || uiEntryHref()) {
+      return;
+    }
+    storeReturnUrl();
+    const baseLoginUrl = getLoginUrl(proxyBaseUrl || "");
+    window.location.replace(buildLoginUrlWithReturn(baseLoginUrl));
   }, [redirectToLogin]);
 
   const legacyRedirectHref = legacyPageRedirectHref(searchParams);

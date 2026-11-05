@@ -67,6 +67,7 @@ describe("dashboard landing", () => {
       value: {
         origin: "http://localhost:3000",
         href: "http://localhost:3000/ui/?login=success",
+        pathname: "/ui/",
         replace: mockLocationReplace,
       },
     });
@@ -126,5 +127,36 @@ describe("dashboard landing", () => {
     state.returnUrl = "/ui/models-and-endpoints";
     render(<CreateKeyPage />);
     expect(mockLocationReplace).toHaveBeenCalledWith("http://localhost:3000/ui/models-and-endpoints");
+  });
+
+  it("sends the sign-in success URL to the ui home instead of back to login", () => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        origin: "http://localhost:3000",
+        href: "http://localhost:3000/mocked-ui?login=success",
+        pathname: "/mocked-ui",
+        search: "?login=success",
+        replace: mockLocationReplace,
+      },
+    });
+    render(<CreateKeyPage />);
+    expect(mockLocationReplace).toHaveBeenCalledWith("/mocked-ui/");
+    expect(mockLocationReplace).not.toHaveBeenCalledWith("/login");
+  });
+
+  it("sends the site root to the /ui app instead of the login page", () => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        origin: "http://localhost:3000",
+        href: "http://localhost:3000/",
+        pathname: "/",
+        replace: mockLocationReplace,
+      },
+    });
+    render(<CreateKeyPage />);
+    expect(mockLocationReplace).toHaveBeenCalledWith("/mocked-ui/");
+    expect(mockLocationReplace).not.toHaveBeenCalledWith("/login");
   });
 });
