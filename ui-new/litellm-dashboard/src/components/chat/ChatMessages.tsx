@@ -212,6 +212,7 @@ interface AssistantBubbleProps {
   isStreaming: boolean;
   isTypingIndicator: boolean;
   mcpEvents?: ChatMessage["mcpEvents"];
+  actions?: React.ReactNode;
 }
 
 function AssistantBubble({
@@ -221,6 +222,7 @@ function AssistantBubble({
   isStreaming,
   isTypingIndicator,
   mcpEvents,
+  actions,
 }: AssistantBubbleProps) {
   const [reasoningKey, setReasoningKey] = useState(0);
   const prevStreamingRef = useRef<boolean>(isStreaming);
@@ -272,6 +274,7 @@ function AssistantBubble({
       </BubbleContent>
 
       <CopyButton text={mainContent} />
+      {actions}
       {mcpEvents && mcpEvents.length > 0 && (
         <div className="mt-2 max-w-full">
           <MCPEventsDisplay events={mcpEvents} />
@@ -424,6 +427,7 @@ interface ChatMessageContentProps {
   allowImages?: boolean;
   isStreaming?: boolean;
   isLastMessage?: boolean;
+  actions?: React.ReactNode;
   onEditMessage?: (messageId: string, newContent: string) => void;
 }
 
@@ -432,6 +436,7 @@ export function ChatMessageContent({
   allowImages = true,
   isStreaming = false,
   isLastMessage = true,
+  actions,
   onEditMessage,
 }: ChatMessageContentProps) {
   if (message.role === "user") {
@@ -450,6 +455,7 @@ export function ChatMessageContent({
       isStreaming={isStreaming}
       isTypingIndicator={isLastMessage && isStreaming && message.content === ""}
       mcpEvents={message.mcpEvents}
+      actions={actions}
     />
   );
 }

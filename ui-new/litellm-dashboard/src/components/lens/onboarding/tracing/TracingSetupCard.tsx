@@ -311,7 +311,7 @@ function TracingKey({
     setCreating(true);
     setError("");
     try {
-      const result = await apiClient.post<components["schemas"]["IngestionKeyCreated"]>("/lens/tracing/keys", {
+      const result = await apiClient.post<{ key?: string; active?: boolean }>("/lens/tracing/keys", {
         accessToken,
         body: TRACING_KEY_REQUEST,
       });

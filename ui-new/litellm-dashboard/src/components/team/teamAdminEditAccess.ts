@@ -3,6 +3,8 @@ import { numberOrNull } from "@/lib/forms/numberOrNull";
 
 export const TEAM_ADMIN_EDITABLE_TEAM_FIELDS_SETTING = "team_admin_editable_team_fields";
 
+export const TEAM_ADMIN_CREATE_MEMBER_KEYS_PERMISSION = "create_member_keys";
+
 export const TEAM_ADMIN_EDITING_DISABLED_TITLE = "Team Admin 无法在此 Proxy 上编辑团队设置";
 export const TEAM_ADMIN_EDITING_DISABLED_DESCRIPTION =
   "Ask a proxy admin to enable fields under Settings > UI > Team admin editable fields.";

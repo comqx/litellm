@@ -300,7 +300,7 @@ export function FindingDetails({
           <h1 className="text-2xl leading-tight font-semibold tracking-tight text-balance">{finding.title}</h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
             {finding.kind === "issue" ? (
-              <PriorityPill priority={finding.priority} />
+              <PriorityPill priority={finding.priority ?? "medium"} />
             ) : (
               <span className="inline-flex h-5 items-center rounded-full bg-muted px-2 font-medium">模式</span>
             )}

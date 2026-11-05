@@ -1,20 +1,38 @@
-import type { components } from "@/lib/http/schema";
+import type {
+  Activity,
+  Finding,
+  InFlight,
+  Job,
+  Lens,
+  LensList,
+  Review,
+  ReviewVerdict,
+  Sample,
+  Settings,
+  Signal,
+  SignalConfig,
+  ToolCount,
+  Worker,
+  WorkerCreated,
+} from "./contract";
 
-export type Lens = components["schemas"]["Lens"];
-
-export type Settings = components["schemas"]["LensSettings"];
-
-export type LensList = components["schemas"]["LensList"];
-export type SignalConfig = components["schemas"]["SignalConfig"];
-export type Signal = NonNullable<SignalConfig["signals"]>[number];
-
-export type Finding = components["schemas"]["Finding"];
-
-export type Sample = components["schemas"]["Sample"];
-
-export type WorkerCreated = components["schemas"]["WorkerCreated"];
-
-export type Job = components["schemas"]["Job"];
+export type {
+  Activity,
+  Finding,
+  InFlight,
+  Job,
+  Lens,
+  LensList,
+  Review,
+  ReviewVerdict,
+  Sample,
+  Settings,
+  Signal,
+  SignalConfig,
+  ToolCount,
+  Worker,
+  WorkerCreated,
+};
 
 export type IssueBrief = NonNullable<Finding["brief"]>;
 
@@ -32,18 +50,6 @@ export type ActivitySelection = Pick<Settings, "source"> &
       | "execution_ids"
     >
   >;
-
-export type Worker = LensList["workers"][number];
-
-export type Review = components["schemas"]["Review"];
-
-export type InFlight = components["schemas"]["InFlight"];
-
-export type Activity = components["schemas"]["Activity"];
-
-export type ToolCount = components["schemas"]["ToolCount"];
-
-export type ReviewVerdict = components["schemas"]["ReviewVerdict"];
 
 export interface RunWindow {
   agent_name?: string;

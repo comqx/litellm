@@ -124,16 +124,15 @@ export function findFinding(lenses: readonly Lens[], key: string): OwnedFinding 
 
 export function stepLine(step: Step): string {
   if (step.kind !== "model") return step.label;
-  const tokens = step.prompt_tokens + step.completion_tokens;
+  const tokens = (step.prompt_tokens ?? 0) + (step.completion_tokens ?? 0);
   const size = tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k tok` : `${tokens} tok`;
-  return `${step.label} · ${size} · $${step.cost.toFixed(4)}`;
+  return `${step.label} · ${size} · $${(step.cost ?? 0).toFixed(4)}`;
 }
 
+const namedModel = (step: Step): step is Step & { model: string } => step.kind === "model" && Boolean(step.model);
+
 export function modelsUsed(steps: readonly Step[]): string[] {
-  const counts = groupBy(
-    steps.filter((s) => s.kind === "model" && s.model),
-    (s) => s.model,
-  );
+  const counts = groupBy(steps.filter(namedModel), (step) => step.model);
   return [...counts.entries()].sort((a, b) => b[1].length - a[1].length).map(([model]) => model);
 }
 

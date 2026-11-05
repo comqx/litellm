@@ -14,14 +14,55 @@ export type TraceQueryBody = components["schemas"]["TraceQueryRequest"];
 export type TraceAgent = components["schemas"]["TraceAgent"];
 export type TraceAgentList = components["schemas"]["TraceAgentList"];
 export type TraceAgentsQuery = NonNullable<paths["/v1/traces/agents"]["get"]["parameters"]["query"]>;
-export type TraceFindingRequest = components["schemas"]["TraceFindingsRequest"];
-export type TraceFindingCount = components["schemas"]["TraceFindingCount"];
-export type TraceSignal = components["schemas"]["TraceSignals"];
-export type SignalFlag = NonNullable<TraceSignal["flags"]>[number];
-export type TraceFeedback = components["schemas"]["TraceFeedback"];
-export type Feedback = components["schemas"]["Feedback"];
-export type TraceFeedbackRequest = components["schemas"]["TraceFeedbackRequest"];
-export type TraceFeedbackSummary = components["schemas"]["TraceFeedbackSummary"];
+export interface TraceKey {
+  trace_id: string;
+  trace_ref?: string;
+}
+
+export interface TraceFindingRequest {
+  traces: TraceKey[];
+}
+
+export interface TraceFindingCount extends TraceKey {
+  finding_count: number | null;
+}
+
+export interface SignalFlag {
+  signal_id: string;
+  name: string;
+  score: number;
+}
+
+export interface TraceSignal extends TraceKey {
+  status: string;
+  flags: SignalFlag[];
+  model: string;
+  classified_at: string | null;
+}
+
+export interface Feedback {
+  score: number;
+  comment: string;
+  author: string;
+  trace_id: string;
+  trace_ref: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TraceFeedback {
+  feedback: Feedback[];
+}
+
+export interface TraceFeedbackRequest {
+  traces: TraceKey[];
+}
+
+export interface TraceFeedbackSummary extends TraceKey {
+  count: number;
+  average: number | null;
+  lowest: number | null;
+}
 export type FeedbackQuery = NonNullable<paths["/lens/feedback"]["get"]["parameters"]["query"]>;
 type ApiSpanDetail =
   paths["/v1/traces/{trace_id}/spans/{span_id}"]["get"]["responses"][200]["content"]["application/json"];

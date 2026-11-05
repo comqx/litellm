@@ -431,6 +431,7 @@ export interface LiteLLMWellKnownUiConfig {
   is_control_plane?: boolean;
   workers?: WorkerInfo[];
   mcp_stdio_enabled?: boolean;
+  use_si_terminology?: boolean;
 }
 
 export interface CredentialsResponse {

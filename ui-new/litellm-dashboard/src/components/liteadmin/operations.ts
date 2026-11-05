@@ -5,6 +5,10 @@ import { ApiError } from "@/lib/http/client";
 import type { components } from "@/lib/http/schema";
 import { generatedKey, projectToolResult, type ResultKind } from "./toolResults";
 
+export type AriaAccess =
+  | { readonly mode: "admin" }
+  | { readonly mode: "usage"; readonly scope: { readonly type: string } };
+
 export interface LiteAdminAction {
   id: string;
   name: string;

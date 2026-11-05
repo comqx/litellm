@@ -97,21 +97,20 @@ export function demoDatasetsApi(data: LensDemoData, now: () => Date = () => new 
       const findings = data.lenses
         .flatMap((lens) => lens.jobs.flatMap((job: Job) => job.findings ?? []))
         .filter((finding: JobFinding) => source.finding_ids.includes(finding.id));
-      const spans = new Map<string, CaseSource>(
-        findings.flatMap((finding: JobFinding) =>
-          finding.evidence.map((evidence: FindingEvidence) => {
-            const traceId = evidenceTarget(evidence.execution_id)?.id ?? "";
-            const origin: CaseSource = {
-              ...NO_SOURCE,
-              trace_id: traceId,
-              span_id: evidence.span_id,
-              finding_id: finding.id,
-              lens_id: source.lens_id,
-            };
-            return [[`${traceId}/${evidence.span_id}`, origin] as const];
-          }),
-        ),
+      const entries: readonly (readonly [string, CaseSource])[] = findings.flatMap((finding: JobFinding) =>
+        finding.evidence.map((evidence: FindingEvidence): readonly [string, CaseSource] => {
+          const traceId = evidenceTarget(evidence.execution_id)?.id ?? "";
+          const origin: CaseSource = {
+            ...NO_SOURCE,
+            trace_id: traceId,
+            span_id: evidence.span_id,
+            finding_id: finding.id,
+            lens_id: source.lens_id,
+          };
+          return [`${traceId}/${evidence.span_id}`, origin];
+        }),
       );
+      const spans = new Map<string, CaseSource>(entries);
       return [...spans.values()].map((origin) => spanCase(origin.trace_id, origin.span_id, origin));
     }
     const origin = {

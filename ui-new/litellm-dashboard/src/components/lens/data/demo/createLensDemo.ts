@@ -92,7 +92,7 @@ function demoTraceApi(data: LensDemoData): TraceApi {
     list: async ({ startMs, endMs }) => ({ data: summariesIn(data, startMs, endMs), next_cursor: null }),
     agents: async ({ startMs, endMs }) => rollUpAgents(summariesIn(data, startMs, endMs)),
     findings: async (traces) =>
-      traces.map((trace: TraceSummary) => {
+      traces.map((trace: TraceFindingKey) => {
         const jobs = data.lenses.flatMap((lens) => lens.jobs).filter((job) => job.status === "completed");
         const assessed = jobs.flatMap((job) =>
           (job.sample?.executions ?? [])

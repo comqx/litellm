@@ -19,10 +19,17 @@ import type {
   WorkerCreated,
 } from "../model/types";
 
+export type ExecutionPart = {
+  readonly span_id: string;
+  readonly content: string;
+  readonly truncated: boolean;
+};
+
 export type ExecutionContent = {
   readonly content: string;
   readonly offset: number;
   readonly has_more: boolean;
+  readonly parts: readonly ExecutionPart[];
 };
 export type FindingStatus = Finding["status"];
 
