@@ -17,6 +17,31 @@ export function getLoginUrl(baseUrl: string = ""): string {
   return `${baseUrl}/ui/login/`;
 }
 
+export function normalizeBackendPageUrlToUiOrigin(
+  url: string,
+  runtimeBackendUrl: string | null,
+  uiOrigin: string | null,
+  relativePath = false,
+): string {
+  if (!runtimeBackendUrl || !uiOrigin) {
+    return url;
+  }
+
+  try {
+    const backendOrigin = new URL(runtimeBackendUrl).origin;
+    const currentUiOrigin = new URL(uiOrigin).origin;
+    const pageUrl = new URL(url);
+    if (backendOrigin === currentUiOrigin || pageUrl.origin !== backendOrigin) {
+      return url;
+    }
+
+    const pagePath = `${pageUrl.pathname}${pageUrl.search}${pageUrl.hash}`;
+    return relativePath && !pagePath.startsWith("//") ? pagePath : `${currentUiOrigin}${pagePath}`;
+  } catch {
+    return url;
+  }
+}
+
 /**
  * Gets the current URL with all query parameters.
  * Returns null if running on server-side.

@@ -23,7 +23,7 @@ describe("AreaChart", () => {
   it("renders the No data placeholder instead of a chart when data is empty", () => {
     const { container } = render(<AreaChart data={[]} index="date" categories={["tokens"]} />);
 
-    expect(screen.getByText("暂无数据")).toBeInTheDocument();
+    expect(screen.getByText("No data")).toBeInTheDocument();
     expect(container.querySelector('[data-slot="chart"]')).toBeNull();
   });
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Bot, Users } from "lucide-react";
 import {
   Combobox,
@@ -24,8 +25,8 @@ type ActivityView = "active-users" | "per-user";
 type ActivePeriod = "dau" | "wau" | "mau";
 
 const VIEW_OPTIONS = [
-  { value: "active-users", label: "活跃用户" },
-  { value: "per-user", label: "按用户" },
+  { value: "active-users", label: "Active users" },
+  { value: "per-user", label: "Per user" },
 ] as const satisfies readonly { value: ActivityView; label: string }[];
 
 const PERIOD_OPTIONS = [
@@ -92,11 +93,12 @@ interface ActiveUserChart {
 }
 
 function ActiveUsersChart({ chart }: { chart: ActiveUserChart }) {
+  const { t } = useTranslation();
   if (chart.loading) return <ChartSkeleton className="h-72" />;
   if (chart.tags.length === 0) {
     return (
       <div className="flex h-72 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-        此时间段内无活跃用户
+        {t("usage.userAgentActivity.noActiveUsers")}
       </div>
     );
   }
@@ -123,6 +125,8 @@ interface UserAgentActivityProps {
   onDateChange?: (value: DateRangePickerValue) => void; // Optional - not used anymore
   /** Tags to pre-select, e.g. an agent's user-agent tags when opened from the Overview's Top agents. */
   initialTags?: readonly string[];
+  selectedTags?: readonly string[];
+  onSelectedTagsChange?: (tags: readonly string[]) => void;
 }
 
 const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
@@ -131,7 +135,10 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
   dateValue,
   onDateChange,
   initialTags,
+  selectedTags: selectedTagsProp,
+  onSelectedTagsChange,
 }) => {
+  const { t } = useTranslation();
   const anchor = useComboboxAnchor();
   // Maximum number of categories to show in charts to prevent color palette overflow
   const MAX_CATEGORIES = 10;
@@ -146,7 +153,15 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
 
   // Tag filtering state
   const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>(() => [...(initialTags ?? [])]);
+  const [localSelectedTags, setLocalSelectedTags] = useState<string[]>(() => [...(initialTags ?? [])]);
+  const selectedTags = selectedTagsProp ?? localSelectedTags;
+  const updateSelectedTags = (next: string[]) => {
+    if (onSelectedTagsChange) {
+      onSelectedTagsChange(next);
+      return;
+    }
+    setLocalSelectedTags(next);
+  };
   const [tagsLoading, setTagsLoading] = useState(false);
 
   // Separate loading states for each endpoint
@@ -184,7 +199,7 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
         accessToken,
         today,
         userAgentFilter || undefined,
-        selectedTags.length > 0 ? selectedTags : undefined,
+        selectedTags.length > 0 ? [...selectedTags] : undefined,
       );
       setDauData(data);
     } catch (error) {
@@ -203,7 +218,7 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
         accessToken,
         today,
         userAgentFilter || undefined,
-        selectedTags.length > 0 ? selectedTags : undefined,
+        selectedTags.length > 0 ? [...selectedTags] : undefined,
       );
       setWauData(data);
     } catch (error) {
@@ -222,7 +237,7 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
         accessToken,
         today,
         userAgentFilter || undefined,
-        selectedTags.length > 0 ? selectedTags : undefined,
+        selectedTags.length > 0 ? [...selectedTags] : undefined,
       );
       setMauData(data);
     } catch (error) {
@@ -241,7 +256,7 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
         accessToken,
         dateValue.from,
         dateValue.to,
-        selectedTags.length > 0 ? selectedTags : undefined,
+        selectedTags.length > 0 ? [...selectedTags] : undefined,
       );
       setSummaryData(summary);
     } catch (error) {
@@ -349,9 +364,9 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
   const generateWeeklyChartData = () => {
     const chartData: any[] = [];
 
-    // Generate all 7 weeks (Week 1 至 Week 7)
+    // Generate all 7 weeks (Week 1 through Week 7)
     for (let weekNum = 1; weekNum <= 7; weekNum++) {
-      const weekEntry: any = { week: `Week ${weekNum}` };
+      const weekEntry: any = { week: t("usage.userAgentActivity.weekLabel", { number: weekNum }) };
 
       // Initialize all user agents to 0
       allWauTags.forEach((tag) => {
@@ -368,7 +383,7 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
       // Extract week number from the date field (e.g., "Week 1 (Jul 27)" -> "Week 1")
       const weekMatch = item.date.match(/Week (\d+)/);
       if (weekMatch) {
-        const weekLabel = `Week ${weekMatch[1]}`;
+        const weekLabel = t("usage.userAgentActivity.weekLabel", { number: weekMatch[1] });
         const weekEntry = chartData.find((d) => d.week === weekLabel);
         if (weekEntry) {
           weekEntry[userAgent] = item.active_users;
@@ -385,9 +400,9 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
   const generateMonthlyChartData = () => {
     const chartData: any[] = [];
 
-    // Generate all 7 months (Month 1 至 Month 7)
+    // Generate all 7 months (Month 1 through Month 7)
     for (let monthNum = 1; monthNum <= 7; monthNum++) {
-      const monthEntry: any = { month: `Month ${monthNum}` };
+      const monthEntry: any = { month: t("usage.userAgentActivity.monthLabel", { number: monthNum }) };
 
       // Initialize all user agents to 0
       allMauTags.forEach((tag) => {
@@ -404,7 +419,7 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
       // Extract month number from the date field (e.g., "Month 1 (Jul)" -> "Month 1")
       const monthMatch = item.date.match(/Month (\d+)/);
       if (monthMatch) {
-        const monthLabel = `Month ${monthMatch[1]}`;
+        const monthLabel = t("usage.userAgentActivity.monthLabel", { number: monthMatch[1] });
         const monthEntry = chartData.find((d) => d.month === monthLabel);
         if (monthEntry) {
           monthEntry[userAgent] = item.active_users;
@@ -420,7 +435,7 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
   const activeUserCharts: readonly ActiveUserChart[] = [
     {
       value: "dau",
-      title: "日活跃用户（DAU）— 近 7 天",
+      title: t("usage.userAgentActivity.charts.dau"),
       loading: dauLoading,
       data: dailyChartData,
       index: "date",
@@ -428,7 +443,7 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
     },
     {
       value: "wau",
-      title: "周活跃用户（WAU）— 近 7 周",
+      title: t("usage.userAgentActivity.charts.wau"),
       loading: wauLoading,
       data: weeklyChartData,
       index: "week",
@@ -436,7 +451,7 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
     },
     {
       value: "mau",
-      title: "月活跃用户（MAU）— 近 7 个月",
+      title: t("usage.userAgentActivity.charts.mau"),
       loading: mauLoading,
       data: monthlyChartData,
       index: "month",
@@ -450,17 +465,14 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
     <div className="grid gap-3">
       <Panel
         icon={Bot}
-        title="按用户代理汇总"
-        subtitle="各用户代理的性能指标"
+        title={t("usage.userAgentActivity.summary.title")}
+        subtitle={t("usage.userAgentActivity.summary.subtitle")}
         action={
           <div className="flex w-full items-center gap-2 sm:w-96">
-            <label className="shrink-0 text-xs text-muted-foreground">按用户代理筛选</label>
-            <Combobox
-              multiple
-              items={availableTags}
-              value={selectedTags}
-              onValueChange={(next: string[]) => setSelectedTags(next)}
-            >
+            <label className="shrink-0 text-xs text-muted-foreground">
+              {t("usage.userAgentActivity.filter.label")}
+            </label>
+            <Combobox multiple items={availableTags} value={[...selectedTags]} onValueChange={updateSelectedTags}>
               <ComboboxChips render={<div ref={anchor} />} className="min-w-0 flex-1" aria-busy={tagsLoading}>
                 <ComboboxValue>
                   {(selected: string[]) =>
@@ -471,11 +483,14 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
                     ))
                   }
                 </ComboboxValue>
-                <ComboboxChipsInput placeholder="全部用户代理" aria-label="全部用户代理" />
-                {selectedTags.length > 0 && <ComboboxClear aria-label="清除用户代理筛选" />}
+                <ComboboxChipsInput
+                  placeholder={t("usage.userAgentActivity.filter.placeholder")}
+                  aria-label={t("usage.userAgentActivity.filter.placeholder")}
+                />
+                {selectedTags.length > 0 && <ComboboxClear aria-label={t("usage.userAgentActivity.filter.clear")} />}
               </ComboboxChips>
               <ComboboxContent anchor={anchor}>
-                <ComboboxEmpty>未找到用户代理</ComboboxEmpty>
+                <ComboboxEmpty>{t("usage.userAgentActivity.filter.empty")}</ComboboxEmpty>
                 <ComboboxList>
                   {(tag: string) => {
                     const userAgent = extractUserAgent(tag);
@@ -521,7 +536,11 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
             {Array.from({ length: Math.max(0, SUMMARY_SLOTS - summaryRows.length) }).map((_, index) => (
               <SummaryCell
                 key={`empty-${index}`}
-                name={<h4 className="truncate text-sm font-medium text-muted-foreground">无数据</h4>}
+                name={
+                  <h4 className="truncate text-sm font-medium text-muted-foreground">
+                    {t("usage.userAgentActivity.summary.noData")}
+                  </h4>
+                }
                 successRequests="-"
                 totalTokens="-"
                 totalCost="-"
@@ -534,14 +553,32 @@ const UserAgentActivity: React.FC<UserAgentActivityProps> = ({
       {/* DAU/WAU/MAU vs Per User Usage. Every view stays mounted so switching does not reset its state. */}
       <Panel
         icon={Users}
-        title={activityView === "active-users" ? "各代理的 DAU、WAU 与 MAU" : "按用户用量（近 30 天）"}
-        subtitle={activityView === "active-users" ? "不同时段的活跃用户" : "按终端用户的用量"}
+        title={
+          activityView === "active-users"
+            ? t("usage.userAgentActivity.activity.activeUsersTitle")
+            : t("usage.userAgentActivity.activity.perUserTitle")
+        }
+        subtitle={
+          activityView === "active-users"
+            ? t("usage.userAgentActivity.activity.activeUsersSubtitle")
+            : t("usage.userAgentActivity.activity.perUserSubtitle")
+        }
         action={
           <>
             {activityView === "active-users" && (
-              <Segmented label="活跃用户周期" value={period} options={PERIOD_OPTIONS} onChange={setPeriod} />
+              <Segmented
+                label={t("usage.userAgentActivity.activity.periodLabel")}
+                value={period}
+                options={PERIOD_OPTIONS}
+                onChange={setPeriod}
+              />
             )}
-            <Segmented label="视图" value={activityView} options={VIEW_OPTIONS} onChange={setActivityView} />
+            <Segmented
+              label={t("usage.userAgentActivity.activity.viewLabel")}
+              value={activityView}
+              options={VIEW_OPTIONS}
+              onChange={setActivityView}
+            />
           </>
         }
       >
@@ -576,10 +613,11 @@ function SummaryCell({
   totalTokens: string;
   totalCost: string;
 }) {
+  const { t } = useTranslation();
   const rows = [
-    { label: "成功请求数", value: successRequests },
-    { label: "总 Token 数", value: totalTokens },
-    { label: "总成本", value: totalCost },
+    { label: t("usage.userAgentActivity.summary.successRequests"), value: successRequests },
+    { label: t("usage.userAgentActivity.summary.totalTokens"), value: totalTokens },
+    { label: t("usage.userAgentActivity.summary.totalCost"), value: totalCost },
   ];
   return (
     <div className="min-w-0 border-b px-4 py-3.5 last:border-b-0 lg:border-b-0">

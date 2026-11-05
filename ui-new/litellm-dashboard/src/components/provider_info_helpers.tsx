@@ -33,6 +33,7 @@ import lambdaLogo from "../../public/assets/logos/lambda.svg";
 import lmstudioLogo from "../../public/assets/logos/lmstudio.svg";
 import metaLlamaLogo from "../../public/assets/logos/meta_llama.svg";
 import microsoftAzureLogo from "../../public/assets/logos/microsoft_azure.svg";
+import microsoft365CopilotLogo from "../../public/assets/logos/microsoft_365_copilot.svg";
 import minimaxLogo from "../../public/assets/logos/minimax.svg";
 import mistralLogo from "../../public/assets/logos/mistral.svg";
 import moonshotLogo from "../../public/assets/logos/moonshot.svg";
@@ -132,6 +133,7 @@ export enum Providers {
   LM_STUDIO = "Lm Studio",
   LLAMA = "Meta Llama",
   MARITALK = "Maritalk",
+  MICROSOFT_365_COPILOT = "Microsoft 365 Copilot",
   MiniMax = "MiniMax",
   MistralAI = "Mistral AI",
   MOONSHOT = "Moonshot",
@@ -253,6 +255,7 @@ export const provider_map: Record<string, string> = {
   LLAMA: "meta_llama",
   LM_STUDIO: "lm_studio",
   MARITALK: "maritalk",
+  MICROSOFT_365_COPILOT: "microsoft_365_copilot",
   MiniMax: "minimax",
   MistralAI: "mistral",
   MOONSHOT: "moonshot",
@@ -363,6 +366,7 @@ export const providerLogoMap: Partial<Record<Providers, string>> = {
   [Providers.LAMBDA_AI]: lambdaLogo.src,
   [Providers.LM_STUDIO]: lmstudioLogo.src,
   [Providers.LLAMA]: metaLlamaLogo.src,
+  [Providers.MICROSOFT_365_COPILOT]: microsoft365CopilotLogo.src,
   [Providers.MiniMax]: minimaxLogo.src,
   [Providers.MistralAI]: mistralLogo.src,
   [Providers.MOONSHOT]: moonshotLogo.src,
@@ -453,6 +457,7 @@ const providerPlaceholderMap: Partial<Record<Providers, string>> = {
   [Providers.CHATGPT]: "chatgpt/gpt-5.4",
   [Providers.Cognition]: "cognition/swe-1.7",
   [Providers.Cursor]: "cursor/claude-4-sonnet",
+  [Providers.MICROSOFT_365_COPILOT]: "microsoft_365_copilot/chat",
   [Providers.DeepInfra]: "deepinfra/<any-model-on-deepinfra>",
   [Providers.EDENAI]: "edenai/openai/gpt-mini-latest",
   [Providers.FalAI]: "fal_ai/fal-ai/flux-pro/v1.1-ultra",

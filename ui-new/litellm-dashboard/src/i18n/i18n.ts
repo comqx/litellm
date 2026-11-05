@@ -2,6 +2,7 @@ import i18n, { type InitOptions } from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import en from "./locales/en.json";
+import zhCN from "./locales/zh-CN.json";
 
 declare module "i18next" {
   interface CustomTypeOptions {
@@ -11,10 +12,13 @@ declare module "i18next" {
 }
 
 const options: InitOptions = {
-  lng: "en",
+  lng: "zh-CN",
   fallbackLng: "en",
   interpolation: { escapeValue: false },
-  resources: { en: { translation: en } },
+  resources: {
+    en: { translation: en },
+    "zh-CN": { translation: zhCN as typeof en },
+  },
   initAsync: false,
 };
 

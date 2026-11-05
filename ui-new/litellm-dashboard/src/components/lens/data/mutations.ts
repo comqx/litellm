@@ -27,8 +27,10 @@ export function useLensUpdate() {
 
 function upsertLens(list: LensList | undefined, saved: Lens): LensList | undefined {
   if (!list) return list;
-  const known = list.lenses.some((lens) => lens.id === saved.id);
-  const lenses = known ? list.lenses.map((lens) => (lens.id === saved.id ? saved : lens)) : [...list.lenses, saved];
+  const known = list.lenses.some((lens: Lens) => lens.id === saved.id);
+  const lenses = known
+    ? list.lenses.map((lens: Lens) => (lens.id === saved.id ? saved : lens))
+    : [...list.lenses, saved];
   return { ...list, lenses };
 }
 
@@ -39,7 +41,9 @@ export function useSaveLens() {
     retry: false,
     mutationFn: ({ id, settings }: { id?: string; settings: Settings }): Promise<Lens> => api.saveLens(id, settings),
     onSuccess: (saved) => {
-      client.setQueryData<LensList>(lensKeys.list(api.scope), (current) => upsertLens(current, saved));
+      client.setQueryData<LensList>(lensKeys.list(api.scope), (current: LensList | undefined) =>
+        upsertLens(current, saved),
+      );
       return client.invalidateQueries({ queryKey: lensKeys.list(api.scope) });
     },
   });

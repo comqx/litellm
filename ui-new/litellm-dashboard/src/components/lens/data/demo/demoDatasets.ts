@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/http/client";
+import type { Job } from "@/components/lens/model/types";
 import type { SpanDetail } from "@/components/lens/traces/types";
 
 import { evidenceTarget } from "../../model/findings";
@@ -11,6 +12,8 @@ const NO_SOURCE: CaseSource = { trace_id: "", trace_ref: "", span_id: "", findin
 const ROLES: ReadonlySet<string> = new Set(["system", "user", "assistant", "tool"]);
 
 type Candidate = DatasetCase | SkippedCase;
+type JobFinding = NonNullable<Job["findings"]>[number];
+type FindingEvidence = JobFinding["evidence"][number];
 
 const isRole = (role: unknown): role is DatasetMessage["role"] => typeof role === "string" && ROLES.has(role);
 
@@ -92,14 +95,20 @@ export function demoDatasetsApi(data: LensDemoData, now: () => Date = () => new 
     if (source.kind === "text") return textCases(source.text);
     if (source.kind === "finding") {
       const findings = data.lenses
-        .flatMap((lens) => lens.jobs.flatMap((job) => job.findings ?? []))
-        .filter((finding) => source.finding_ids.includes(finding.id));
-      const spans = new Map(
-        findings.flatMap((finding) =>
-          finding.evidence.map((evidence) => {
+        .flatMap((lens) => lens.jobs.flatMap((job: Job) => job.findings ?? []))
+        .filter((finding: JobFinding) => source.finding_ids.includes(finding.id));
+      const spans = new Map<string, CaseSource>(
+        findings.flatMap((finding: JobFinding) =>
+          finding.evidence.map((evidence: FindingEvidence) => {
             const traceId = evidenceTarget(evidence.execution_id)?.id ?? "";
-            const origin = { ...NO_SOURCE, trace_id: traceId, span_id: evidence.span_id, finding_id: finding.id };
-            return [`${traceId}/${evidence.span_id}`, { ...origin, lens_id: source.lens_id }] as const;
+            const origin: CaseSource = {
+              ...NO_SOURCE,
+              trace_id: traceId,
+              span_id: evidence.span_id,
+              finding_id: finding.id,
+              lens_id: source.lens_id,
+            };
+            return [[`${traceId}/${evidence.span_id}`, origin] as const];
           }),
         ),
       );
@@ -147,7 +156,7 @@ export function demoDatasetsApi(data: LensDemoData, now: () => Date = () => new 
     },
     build: async ({ sources, dataset_id }) => {
       const existing = (dataset_id && latest(dataset_id)?.cases) || [];
-      const seen = new Set(existing.map((item) => item.id));
+      const seen = new Set(existing.map((item: DatasetCase) => item.id));
       const candidates = sources.flatMap(sourceCases);
       const cases: DatasetCase[] = [];
       const skipped: SkippedCase[] = [];
@@ -172,14 +181,14 @@ export function demoDatasetsApi(data: LensDemoData, now: () => Date = () => new 
         ...current,
         revision: current.revision + 1,
         created_at: now().toISOString(),
-        cases: cases.map((item) => ({
+        cases: cases.map((item: DatasetCase) => ({
           ...item,
           reply: item.reply ?? "",
           tool_calls: item.tool_calls ?? [],
           expected: item.expected ?? "",
           included: item.included ?? true,
           agent_version: item.agent_version ?? "",
-          messages: item.messages.map((message) => ({
+          messages: item.messages.map((message: DatasetMessage) => ({
             ...message,
             name: message.name ?? "",
             tool_calls: message.tool_calls ?? [],
@@ -192,15 +201,18 @@ export function demoDatasetsApi(data: LensDemoData, now: () => Date = () => new 
     },
     exportJsonl: async (id, revision) => {
       const history = revisions.get(id);
-      const found = revision === undefined ? history?.at(-1) : history?.find((item) => item.revision === revision);
+      const found =
+        revision === undefined ? history?.at(-1) : history?.find((item: Dataset) => item.revision === revision);
       if (!found) return missing();
-      const lines = found.cases.filter((item) => item.included).map((item) => `${JSON.stringify(item)}\n`);
+      const lines = found.cases
+        .filter((item: DatasetCase) => item.included)
+        .map((item: DatasetCase) => `${JSON.stringify(item)}\n`);
       return new Blob(lines, { type: "application/x-ndjson" });
     },
     evalCases: async (id, revision) => {
-      const found = revisions.get(id)?.find((item) => item.revision === revision);
+      const found = revisions.get(id)?.find((item: Dataset) => item.revision === revision);
       if (!found) return missing();
-      return { dataset_id: id, revision, cases: found.cases.filter((item) => item.included) };
+      return { dataset_id: id, revision, cases: found.cases.filter((item: DatasetCase) => item.included) };
     },
   };
 }

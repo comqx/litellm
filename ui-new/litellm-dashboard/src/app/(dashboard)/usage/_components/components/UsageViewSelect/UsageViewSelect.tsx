@@ -1,7 +1,11 @@
+import { useTerminology } from "@/contexts/TerminologyContext";
+import type { ParseKeys } from "i18next";
+import { useTranslation } from "react-i18next";
 import { BarChart3, Bot, Building2, Globe, LineChart, ShoppingCart, Tags, User, Users } from "lucide-react";
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import i18n from "@/i18n/i18n";
 import { hasCapability, type Capability } from "@/utils/capabilities";
 import { all_admin_roles } from "@/utils/roles";
 export type UsageOption =
@@ -26,108 +30,120 @@ export interface UsageViewSelectProps {
 }
 interface OptionConfig {
   value: UsageOption;
-  label: string;
-  description: string;
+  label: ParseKeys;
+  description: ParseKeys;
   icon: React.ReactNode;
   capability?: Capability;
   adminOnly?: boolean;
-  showForAdmin?: string;
-  showForNonAdmin?: string;
-  descriptionForAdmin?: string;
-  descriptionForNonAdmin?: string;
+  showForAdmin?: ParseKeys;
+  showForNonAdmin?: ParseKeys;
+  descriptionForAdmin?: ParseKeys;
+  descriptionForNonAdmin?: ParseKeys;
   badgeText?: string;
 }
 const OPTIONS: OptionConfig[] = [
   {
     value: "global",
-    label: "全局用量",
-    showForAdmin: "全局用量",
-    showForNonAdmin: "我的用量",
-    description: "查看所有资源的用量",
-    descriptionForAdmin: "查看所有资源的用量",
-    descriptionForNonAdmin: "查看你的用量",
+    label: "usage.viewSelect.options.global.label",
+    showForAdmin: "usage.viewSelect.options.global.adminLabel",
+    showForNonAdmin: "usage.viewSelect.options.global.nonAdminLabel",
+    description: "usage.viewSelect.options.global.description",
+    descriptionForAdmin: "usage.viewSelect.options.global.adminDescription",
+    descriptionForNonAdmin: "usage.viewSelect.options.global.nonAdminDescription",
     icon: <Globe className="size-4" />,
   },
   {
     value: "my-usage",
-    label: "我的用量",
-    description: "查看你自己的用量",
+    label: "usage.viewSelect.options.myUsage.label",
+    description: "usage.viewSelect.options.myUsage.description",
     icon: <User className="size-4" />,
     adminOnly: true,
   },
   {
     value: "organization",
-    label: "组织用量",
-    description: "查看所有组织的用量",
+    label: "usage.viewSelect.options.organization.label",
+    description: "usage.viewSelect.options.organization.description",
     icon: <Building2 className="size-4" />,
     capability: "viewOrganizationUsage",
   },
   {
     value: "team",
-    label: "Team 用量",
-    description: "按 Team 查看用量",
+    label: "usage.viewSelect.options.team.label",
+    description: "usage.viewSelect.options.team.description",
     icon: <Users className="size-4" />,
   },
   {
     value: "customer",
-    label: "客户用量",
-    description: "按客户账号查看用量",
+    label: "usage.viewSelect.options.customer.label",
+    description: "usage.viewSelect.options.customer.description",
     icon: <ShoppingCart className="size-4" />,
     adminOnly: true,
   },
   {
     value: "tag",
-    label: "Tag 用量",
-    description: "按 Tag 分组查看用量",
+    label: "usage.viewSelect.options.tag.label",
+    description: "usage.viewSelect.options.tag.description",
     icon: <Tags className="size-4" />,
     adminOnly: true,
   },
   {
     value: "agent",
-    label: "Agent 用量 (A2A)",
-    description: "按 AI Agent 查看用量",
+    label: "usage.viewSelect.options.agent.label",
+    description: "usage.viewSelect.options.agent.description",
     icon: <Bot className="size-4" />,
     capability: "viewAgentUsage",
   },
   {
     value: "user",
-    label: "用户用量",
-    description: "按用户查看用量",
+    label: "usage.viewSelect.options.user.label",
+    description: "usage.viewSelect.options.user.description",
     icon: <User className="size-4" />,
     adminOnly: true,
   },
   {
     value: "user-agent-activity",
-    label: "用户 Agent 活动",
-    description: "查看详细的用户 Agent 活动日志",
+    label: "usage.viewSelect.options.userAgentActivity.label",
+    description: "usage.viewSelect.options.userAgentActivity.description",
     icon: <LineChart className="size-4" />,
     adminOnly: true,
   },
 ];
+const visibleOptions = (userRole: string | null, canViewTagUsage: boolean, isOrgAdmin: boolean): OptionConfig[] => {
+  const isAdmin = all_admin_roles.includes(userRole ?? "");
+  return OPTIONS.filter((option) => {
+    if (option.capability) {
+      return hasCapability(userRole, option.capability, isOrgAdmin);
+    }
+    if (option.value === "tag" && canViewTagUsage) {
+      return true;
+    }
+    return !(option.adminOnly && !isAdmin);
+  });
+};
+
+export const USAGE_OPTIONS: readonly UsageOption[] = OPTIONS.map((option) => option.value);
+
+export const allowedUsageOptions = (
+  userRole: string | null,
+  canViewTagUsage: boolean,
+  isOrgAdmin: boolean,
+): readonly UsageOption[] => visibleOptions(userRole, canViewTagUsage, isOrgAdmin).map((option) => option.value);
+
 export const UsageViewSelect: React.FC<UsageViewSelectProps> = ({
   value,
   onChange,
   userRole,
   canViewTagUsage = false,
   isOrgAdmin = false,
-  title = "用量视图",
-  description = "选择要查看的用量数据",
+  title = i18n.t("usage.viewSelect.title"),
+  description = i18n.t("usage.viewSelect.description"),
   "data-id": dataId,
 }) => {
+  const { t } = useTranslation();
+  const term = useTerminology();
   const isAdmin = all_admin_roles.includes(userRole ?? "");
   const getFilteredOptions = () => {
-    return OPTIONS.filter((option) => {
-      if (option.capability) {
-        return hasCapability(userRole, option.capability, isOrgAdmin);
-      }
-      if (option.value === "tag" && canViewTagUsage) {
-        return true;
-      }
-      if (option.adminOnly && !isAdmin) {
-        return false;
-      }
-      return true;
-    }).map((option) => {
+    return visibleOptions(userRole, canViewTagUsage, isOrgAdmin).map((option) => {
       let label = option.label;
       let desc = option.description;
       if (option.showForAdmin && option.showForNonAdmin) {
@@ -138,8 +154,8 @@ export const UsageViewSelect: React.FC<UsageViewSelectProps> = ({
       }
       return {
         value: option.value,
-        label,
-        description: desc,
+        label: t(label),
+        description: term(t(desc)),
         icon: option.icon,
         badgeText: option.badgeText,
       };

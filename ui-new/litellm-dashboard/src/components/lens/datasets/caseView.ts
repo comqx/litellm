@@ -48,15 +48,15 @@ export interface CaseInput {
 /** The turn that opened the conversation: the first user message, else the first message with any text. */
 export const caseInput = (item: DatasetCase): CaseInput | null => {
   const opening =
-    item.messages.find((message) => message.role === "user" && message.content) ??
-    item.messages.find((message) => message.content);
+    item.messages.find((message: DatasetMessage) => message.role === "user" && message.content) ??
+    item.messages.find((message: DatasetMessage) => message.content);
   return opening ? { role: opening.role, text: previewText(opening.content) } : null;
 };
 
 export const caseReplyText = (item: DatasetCase): string => previewText(item.reply);
 
 export const toolCallCount = (item: DatasetCase): number =>
-  item.tool_calls.length + item.messages.reduce((total, message) => total + message.tool_calls.length, 0);
+  item.tool_calls.length + item.messages.reduce((total, message: DatasetMessage) => total + message.tool_calls.length, 0);
 
 export const caseConversation = (item: DatasetCase): TraceMessage[] => item.messages.flatMap(normalizedMessages);
 

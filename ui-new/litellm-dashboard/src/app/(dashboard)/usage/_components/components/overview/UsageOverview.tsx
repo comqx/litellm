@@ -1,28 +1,19 @@
 "use client";
 
 /**
- * Usage overview: a stat strip, the 模型排行榜's stacked chart and
+ * Usage overview: a stat strip, the Model Leaderboard's stacked chart and
  * tooltip applied to the usage aggregate, then a ranked share list in
  * matching colors.
  */
 
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { DailyData } from "@/components/UsagePage/types";
-import { KeyRound } from "lucide-react";
-import { StackedUsageChart, type StackedUsageScale } from "@/components/shared/charts";
-import {
-  bucketSeries,
-  bucketTotals,
-  labelForDate,
-  formatMetricValue,
-  type Granularity,
-  type OverviewTotals,
-  type UsageMetric,
-} from "./overviewData";
-import { BreakdownControls, Leaderboard, useBreakdown, type BreakdownState } from "./BreakdownChart";
-import { cn } from "@/lib/cva.config";
-import { ChartSkeleton, Panel, PANEL_INSET_X, Segmented } from "./Primitives";
+import { KeyRound, Users } from "lucide-react";
+import type { OverviewTotals } from "./overviewData";
+import { Panel } from "./Primitives";
 import UsageStatStrip from "./UsageStatStrip";
+import UsageBreakdownChart from "./UsageBreakdownChart";
 
 interface UsageOverviewProps {
   results: readonly DailyData[];
@@ -30,41 +21,28 @@ interface UsageOverviewProps {
   loading: boolean;
   requestCountsPending: boolean;
   budget: number | null;
+  subscriptionCosts: ReactNode;
   topKeys: ReactNode;
+  topUsers: ReactNode;
   gatewayByEndpoint: ReactNode;
   topAgents: ReactNode;
   providerBreakdown: ReactNode;
 }
-
-const METRIC_NOUN: Record<UsageMetric, string> = { spend: "花费", tokens: "Token 数", requests: "请求数" };
-const GRANULARITY_OPTIONS = [
-  { value: "day", label: "每日" },
-  { value: "week", label: "每周" },
-] as const satisfies readonly { value: Granularity; label: string }[];
-const SCALE_OPTIONS = [
-  { value: "linear", label: "线性" },
-  { value: "log", label: "对数" },
-] as const satisfies readonly { value: StackedUsageScale; label: string }[];
 
 export default function UsageOverview({
   results,
   totals,
   loading,
   requestCountsPending,
+  subscriptionCosts,
   topKeys,
+  topUsers,
   gatewayByEndpoint,
   topAgents,
   providerBreakdown,
   budget,
 }: UsageOverviewProps) {
-  const [state, setState] = useState<BreakdownState>({ metric: "spend", dimension: "model_groups" });
-  const [granularity, setGranularity] = useState<Granularity>("day");
-  const [scale, setScale] = useState<StackedUsageScale>("linear");
-  const { series: dailySeries, ranking } = useBreakdown(results, state, 8);
-  const series = useMemo(() => bucketSeries(dailySeries, granularity), [dailySeries, granularity]);
-  const totalsByBucket = useMemo(() => bucketTotals(series), [series]);
-  const format = (value: number) => formatMetricValue(value, state.metric);
-
+  const { t } = useTranslation();
   return (
     <div className="grid gap-3">
       <UsageStatStrip
@@ -75,57 +53,18 @@ export default function UsageOverview({
         budget={budget}
       />
 
-      <Panel
-        title="热门模型"
-        subtitle={`${granularity === "day" ? "每日" : "每周"}${METRIC_NOUN[state.metric]}（前 8 名堆叠）`}
-        action={
-          <>
-            <BreakdownControls state={state} onChange={setState} showDimension={false} />
-            <Segmented
-              label="Bucket size"
-              value={granularity}
-              options={GRANULARITY_OPTIONS}
-              onChange={setGranularity}
-            />
-            <Segmented label="Scale" value={scale} options={SCALE_OPTIONS} onChange={setScale} />
-          </>
-        }
-        bodyClassName="px-0 pt-4 pb-0"
-      >
-        <div className="px-2 pb-2">
-          {loading ? (
-            <ChartSkeleton className="mx-3 h-[380px] w-auto" />
-          ) : (
-            <StackedUsageChart
-              data={series.data}
-              series={series.keys}
-              labels={series.labels}
-              colors={series.colors}
-              xKey="date"
-              xLabel={(date) => labelForDate(series, date)}
-              scale={scale}
-              format={format}
-              totalFor={(date) => totalsByBucket.get(date)}
-            />
-          )}
-        </div>
-        <div className={cn("border-t py-2", PANEL_INSET_X)}>
-          <Leaderboard
-            ranking={ranking}
-            series={dailySeries}
-            metric={state.metric}
-            dimension={state.dimension}
-            columns={2}
-            limit={10}
-          />
-        </div>
-      </Panel>
+      {subscriptionCosts}
+
+      <UsageBreakdownChart results={results} loading={loading} />
 
       {topAgents}
       {providerBreakdown}
 
-      <Panel icon={KeyRound} title="热门虚拟密钥">
+      <Panel icon={KeyRound} title={t("usage.overview.topVirtualKeys")}>
         {topKeys}
+      </Panel>
+      <Panel icon={Users} title={t("usage.overview.topUsersBySpend")}>
+        {topUsers}
       </Panel>
       {gatewayByEndpoint}
     </div>

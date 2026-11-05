@@ -2,11 +2,16 @@ import type { Job } from "@/components/lens/model/types";
 import { ApiError } from "@/lib/http/client";
 import type { TraceApi } from "@/components/lens/traces/api";
 import { rollUpAgents } from "@/components/lens/agents/agentRollup";
-import type { Feedback, TraceSummary } from "@/components/lens/traces/types";
+import type { Feedback, TraceFindingRequest, TraceSummary } from "@/components/lens/traces/types";
 import type { LensServices } from "../LensServices";
 import type { LensApi } from "../service";
 import { demoDatasetsApi } from "./demoDatasets";
 import { createLensDemoData, type LensDemoData } from "./fixtures";
+
+type SampleExecution = NonNullable<NonNullable<Job["sample"]>["executions"]>[number];
+type JobAssessment = Job["assessments"][number];
+type JobFinding = NonNullable<Job["findings"]>[number];
+type TraceFindingKey = TraceFindingRequest["traces"][number];
 
 const notInDemo = (): Promise<never> =>
   Promise.reject(new ApiError("This item is not in the demo", 404, { detail: "This item is not in the demo" }));
@@ -87,11 +92,11 @@ function demoTraceApi(data: LensDemoData): TraceApi {
     list: async ({ startMs, endMs }) => ({ data: summariesIn(data, startMs, endMs), next_cursor: null }),
     agents: async ({ startMs, endMs }) => rollUpAgents(summariesIn(data, startMs, endMs)),
     findings: async (traces) =>
-      traces.map((trace) => {
+      traces.map((trace: TraceSummary) => {
         const jobs = data.lenses.flatMap((lens) => lens.jobs).filter((job) => job.status === "completed");
         const assessed = jobs.flatMap((job) =>
           (job.sample?.executions ?? [])
-            .filter((execution) => {
+            .filter((execution: SampleExecution) => {
               const matches =
                 execution.source === "traces" &&
                 execution.trace_id === trace.trace_id &&
@@ -99,25 +104,32 @@ function demoTraceApi(data: LensDemoData): TraceApi {
               return (
                 matches &&
                 job.assessments.some(
-                  (assessment) => assessment.execution_id === execution.id && !assessment.cannot_assess,
+                  (assessment: JobAssessment) =>
+                    assessment.execution_id === execution.id && !assessment.cannot_assess,
                 )
               );
             })
-            .map((execution) => ({ job, execution })),
+            .map((execution: SampleExecution) => ({ job, execution })),
         );
         const findings = new Set(
           assessed.flatMap(({ job, execution }) =>
             (job.findings ?? [])
-              .filter((finding) => finding.occurrences.includes(execution.id))
-              .map((finding) => finding.id),
+              .filter((finding: JobFinding) => finding.occurrences.includes(execution.id))
+              .map((finding: JobFinding) => finding.id),
           ),
         );
         return { ...trace, finding_count: assessed.length ? findings.size : null };
       }),
     signals: async (traces) =>
-      traces.map((trace) => ({ ...trace, status: "unclassified" as const, flags: [], model: "", classified_at: null })),
+      traces.map((trace: TraceFindingKey) => ({
+        ...trace,
+        status: "unclassified" as const,
+        flags: [],
+        model: "",
+        classified_at: null,
+      })),
     feedbackSummary: async (traces) =>
-      traces.map((trace) => {
+      traces.map((trace: TraceFindingKey) => {
         const scores = feedbackFor(trace.trace_id).map((entry) => entry.score);
         return {
           trace_id: trace.trace_id,

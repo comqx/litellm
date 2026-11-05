@@ -1,8 +1,10 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { RotateCcw, Sparkles, X } from "lucide-react";
+import { uiHref } from "@/utils/uiHref";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
 import { useDisableLiteAdmin } from "@/app/(dashboard)/hooks/useDisableLiteAdmin";
 import { useProxySettingsQuery } from "@/app/(dashboard)/hooks/proxySettings/useProxySettings";
@@ -12,7 +14,8 @@ import { fetchAvailableModels, type ModelGroup } from "@/components/llm_calls/fe
 import { getProxyBaseUrl } from "@/components/networking";
 import { SearchSelect } from "@/components/shared/SearchSelect";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { AriaAvatar } from "./AriaAvatar";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -103,6 +106,17 @@ export function LiteAdminPage() {
     <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
       <p>已在右侧打开 LiteAdmin，也可使用 ⌘J 切换显示。</p>
     </div>
+  );
+}
+
+export function AriaUsageTrigger() {
+  const state = useContext(LiteAdminContext);
+  if (!state) return null;
+  return (
+    <Link href={uiHref("aria")} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}>
+      <AriaAvatar size={18} />
+      询问 Aria
+    </Link>
   );
 }
 

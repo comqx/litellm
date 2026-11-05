@@ -7,9 +7,11 @@ import { liveDatasetsApi, type DatasetsApi } from "../datasets/client";
 import type {
   ActivitySelection,
   AnalysisModelInfo,
+  Finding,
   Job,
   Lens,
   LensList,
+  Review,
   RunWindow,
   Sample,
   Settings,
@@ -17,8 +19,12 @@ import type {
   WorkerCreated,
 } from "../model/types";
 
-export type ExecutionContent = components["schemas"]["ExecutionContent"];
-export type FindingStatus = components["schemas"]["FindingUpdate"]["status"];
+export type ExecutionContent = {
+  readonly content: string;
+  readonly offset: number;
+  readonly has_more: boolean;
+};
+export type FindingStatus = Finding["status"];
 
 const keySchema = z.object({ token: z.string(), key_alias: z.string().nullable().optional() });
 const keyPageSchema = z.object({ keys: z.array(keySchema), total_pages: z.number() });
@@ -37,19 +43,22 @@ export type Key = z.infer<typeof keySchema>;
 export type KeyPage = z.infer<typeof keyPageSchema>;
 export type KeyInfo = z.infer<typeof keyInfoSchema>["info"];
 
-export type ReviewPage = components["schemas"]["ReviewPage"];
+export type ReviewPage = { reviews: readonly Review[]; reviewed: number };
 
 export interface AnalysisKeyRequest {
   readonly model: string;
   readonly budget: number;
 }
 
+export type ActivityAvailability = { traces: boolean; requests: boolean };
+export type WatchAllResult = { watching: readonly string[]; skipped: readonly string[] };
+
 export interface LensApi {
   /** Partitions query caches between backends (one token, or the demo). */
   readonly scope: string;
   readonly datasets: DatasetsApi;
   lenses(): Promise<LensList>;
-  activity(): Promise<components["schemas"]["ActivityAvailability"]>;
+  activity(): Promise<ActivityAvailability>;
   runs(lensId: string, offset: number): Promise<Job[]>;
   run(lensId: string, jobId: string): Promise<Job>;
   reviews(lensId: string, jobId: string, after: number): Promise<ReviewPage>;
@@ -62,7 +71,7 @@ export interface LensApi {
   keyInfo(keyId: string): Promise<KeyInfo>;
   saveLens(id: string | undefined, settings: Settings): Promise<Lens>;
   startRun(lensId: string, request?: RunWindow): Promise<void>;
-  watchAll(): Promise<components["schemas"]["WatchAllResult"]>;
+  watchAll(): Promise<WatchAllResult>;
   signalConfig(): Promise<SignalConfig>;
   saveSignalConfig(config: SignalConfig): Promise<SignalConfig>;
   cancelRun(lensId: string): Promise<void>;
@@ -76,10 +85,10 @@ export interface LensApi {
 
 type LensClient = Client<paths>;
 
-async function required<T>(request: Promise<{ data?: T }>): Promise<T> {
+async function required<T>(request: Promise<{ data?: unknown }>): Promise<T> {
   const { data } = await request;
   if (data === undefined) throw new Error("The proxy returned an empty response");
-  return data;
+  return data as T;
 }
 
 async function sent(request: Promise<unknown>): Promise<void> {
@@ -90,39 +99,47 @@ export function liveLensApi(client: LensClient, apiClient: ApiClient, accessToke
   const headers = { [getAuthHeaderName()]: `Bearer ${accessToken}` };
   const lens = (lens_id: string) => ({ headers, params: { path: { lens_id } } });
   const worker = (worker_id: string) => ({ headers, params: { path: { worker_id } } });
+  type OpenApiCall = (path: string, init?: object) => Promise<{ data?: unknown }>;
+  const http = client as unknown as {
+    GET: OpenApiCall;
+    POST: OpenApiCall;
+    PUT: OpenApiCall;
+    PATCH: OpenApiCall;
+    DELETE: OpenApiCall;
+  };
   return {
     scope: accessToken,
     datasets: liveDatasetsApi(client, apiClient, accessToken),
-    lenses: () => required(client.GET("/lens", { headers })),
-    activity: () => required(client.GET("/lens/activity/available", { headers })),
+    lenses: () => required(http.GET("/lens", { headers })),
+    activity: () => required(http.GET("/lens/activity/available", { headers })),
     runs: (lensId, offset) =>
       required(
-        client.GET("/lens/{lens_id}/runs", { headers, params: { path: { lens_id: lensId }, query: { offset } } }),
+        http.GET("/lens/{lens_id}/runs", { headers, params: { path: { lens_id: lensId }, query: { offset } } }),
       ),
     run: (lensId, jobId) =>
       required(
-        client.GET("/lens/{lens_id}/runs/{job_id}", {
+        http.GET("/lens/{lens_id}/runs/{job_id}", {
           headers,
           params: { path: { lens_id: lensId, job_id: jobId } },
         }),
       ),
     reviews: (lensId, jobId, after) =>
       required(
-        client.GET("/lens/{lens_id}/runs/{job_id}/reviews", {
+        http.GET("/lens/{lens_id}/runs/{job_id}/reviews", {
           headers,
           params: { path: { lens_id: lensId, job_id: jobId }, query: { after } },
         }),
       ),
     execution: (lensId, executionId, offset) =>
       required(
-        client.GET("/lens/{lens_id}/executions/{execution_id}", {
+        http.GET("/lens/{lens_id}/executions/{execution_id}", {
           headers,
           params: { path: { lens_id: lensId, execution_id: executionId }, query: { offset } },
         }),
       ),
     sample: (selection, offset, asOf) =>
       required(
-        client.POST("/lens/preview/sample", {
+        http.POST("/lens/preview/sample", {
           headers,
           body: {
             offset,
@@ -141,7 +158,7 @@ export function liveLensApi(client: LensClient, apiClient: ApiClient, accessToke
           },
         }),
       ),
-    agents: () => required(client.GET("/lens/agents", { headers })),
+    agents: () => required(http.GET("/lens/agents", { headers })),
     models: () => apiClient.get("/models", { accessToken }),
     modelDetails: () => apiClient.get("/model_group/info", { accessToken }),
     keys: async (alias, page, signal) =>
@@ -166,17 +183,17 @@ export function liveLensApi(client: LensClient, apiClient: ApiClient, accessToke
     saveLens: (id, settings) =>
       required(
         id
-          ? client.PUT("/lens/{lens_id}", { ...lens(id), body: settings })
-          : client.POST("/lens", { headers, body: settings }),
+          ? http.PUT("/lens/{lens_id}", { ...lens(id), body: settings })
+          : http.POST("/lens", { headers, body: settings }),
       ),
-    startRun: (lensId, request = {}) => sent(client.POST("/lens/{lens_id}/runs", { ...lens(lensId), body: request })),
-    watchAll: () => required(client.POST("/lens/watch-all", { headers })),
-    signalConfig: () => required(client.GET("/lens/signals", { headers })),
-    saveSignalConfig: (config) => required(client.PUT("/lens/signals", { headers, body: config })),
-    cancelRun: (lensId) => sent(client.POST("/lens/{lens_id}/cancel", lens(lensId))),
+    startRun: (lensId, request = {}) => sent(http.POST("/lens/{lens_id}/runs", { ...lens(lensId), body: request })),
+    watchAll: () => required(http.POST("/lens/watch-all", { headers })),
+    signalConfig: () => required(http.GET("/lens/signals", { headers })),
+    saveSignalConfig: (config) => required(http.PUT("/lens/signals", { headers, body: config })),
+    cancelRun: (lensId) => sent(http.POST("/lens/{lens_id}/cancel", lens(lensId))),
     reviewFinding: (lensId, findingId, status, reason) =>
       sent(
-        client.PATCH("/lens/{lens_id}/findings/{finding_id}", {
+        http.PATCH("/lens/{lens_id}/findings/{finding_id}", {
           headers,
           params: { path: { lens_id: lensId, finding_id: findingId } },
           body: { status, reason },
@@ -184,19 +201,19 @@ export function liveLensApi(client: LensClient, apiClient: ApiClient, accessToke
       ),
     registerWorker: (analysisKeyId) =>
       required(
-        client.POST("/lens/workers/register", {
+        http.POST("/lens/workers/register", {
           headers,
           body: { name: "Lens worker", analysis_key_id: analysisKeyId, managed: true },
         }),
       ),
     setWorkerBillingKey: (workerId, analysisKeyId) =>
       sent(
-        client.PUT("/lens/workers/{worker_id}/billing-key", {
+        http.PUT("/lens/workers/{worker_id}/billing-key", {
           ...worker(workerId),
           body: { analysis_key_id: analysisKeyId },
         }),
       ),
-    revokeWorker: (workerId) => sent(client.DELETE("/lens/workers/{worker_id}", worker(workerId))),
+    revokeWorker: (workerId) => sent(http.DELETE("/lens/workers/{worker_id}", worker(workerId))),
     generateAnalysisKey: (request) =>
       apiClient.post<{ token_id?: string }>("/key/generate", {
         accessToken,

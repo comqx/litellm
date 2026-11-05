@@ -288,8 +288,8 @@ export function createLensDemoData(now = Date.now()) {
       const snapshot = relevant
         .map((f) => ({
           ...f,
-          occurrences: f.occurrences.filter((id) => selectedIds.has(id)),
-          evidence: f.evidence.filter((e) => selectedIds.has(e.execution_id)),
+          occurrences: f.occurrences.filter((id: string) => selectedIds.has(id)),
+          evidence: f.evidence.filter((e: Finding["evidence"][number]) => selectedIds.has(e.execution_id)),
         }))
         .filter((f) => f.occurrences.length > 0);
       return {

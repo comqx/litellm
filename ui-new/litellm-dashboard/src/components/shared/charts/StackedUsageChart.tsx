@@ -3,9 +3,10 @@
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import i18n from "@/i18n/i18n";
 import { cn } from "@/lib/cva.config";
 
-/** The 模型排行榜 palette; shared so the usage page stacks in the same colors. */
+/** The Model Leaderboard palette; shared so the usage page stacks in the same colors. */
 export const STACKED_USAGE_PALETTE = [
   "#ec4899",
   "#a855f7",
@@ -43,7 +44,7 @@ export interface StackedUsageChartProps {
 }
 
 /**
- * One tooltip row: the default swatch layout, but the value goes 至 `format` and is held apart
+ * One tooltip row: the default swatch layout, but the value goes through `format` and is held apart
  * from long series names. Zero rows render nothing, so a day lists only what it actually used.
  */
 export function StackedUsageTooltipRow({
@@ -77,7 +78,7 @@ export function StackedUsageChart({
   xLabel = String,
   format,
   totalFor,
-  totalLabel = "Total",
+  totalLabel = i18n.t("shared.charts.stackedUsageChart.total"),
   scale = "linear",
   className,
 }: StackedUsageChartProps) {

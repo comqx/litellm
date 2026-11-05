@@ -117,6 +117,13 @@ import { MCP_TOOLS_PREVIEW_FORBIDDEN_MESSAGE } from "./mcp_tools/constants";
 import type { ComplexityRouterConfigPayload } from "./add_model/build_complexity_router_config";
 import type { AutoRouterPresetsResponse } from "@/lib/autorouter_presets";
 import type { VectorStoreIndex } from "@/app/(dashboard)/vector-stores/_components/IndexesTab";
+import type {
+  SubscriptionAccountCreateRequest,
+  SubscriptionAccountDeleteRequest,
+  SubscriptionAccountUpdateRequest,
+  SubscriptionFee,
+  SubscriptionUsageResponse,
+} from "@/app/(dashboard)/usage/_components/components/SubscriptionCost/types";
 import type { RoutingDecision } from "./logs/detail/RoutingDecisionCard";
 import type {
   SpanDetail,
@@ -142,6 +149,7 @@ import type {
   DailyActivityKeyPageResponse,
   DailyActivityKeySearchResponse,
   DailyActivityRequest,
+  DailyActivityUserPageResponse,
   ExportFormat,
   ExportType,
   ModelTopKeysResponse,
@@ -154,6 +162,7 @@ import {
   registerErrorHandler,
 } from "@/lib/http/runtime";
 import { serverRootPath, setServerRootPath } from "@/lib/serverRootPath";
+import { normalizeBackendPageUrlToUiOrigin } from "@/utils/returnUrlUtils";
 
 export { serverRootPath };
 
@@ -187,6 +196,9 @@ const _initialWorkerUrl = (() => {
   return null;
 })();
 export let proxyBaseUrl: string | null = _initialWorkerUrl ?? defaultProxyBaseUrl;
+let discoveredProxyBaseUrl: string | null = defaultProxyBaseUrl;
+let gatewayBaseUrl: string | null = null;
+let runtimeBackendBaseUrl: string | null = null;
 if (isLocal != true) {
   console.log = function () {};
 }
@@ -202,14 +214,15 @@ const updateProxyBaseUrl = (serverRootPath: string, receivedProxyBaseUrl: string
   /**
    * Special function for updating the proxy base url. Should only be called by getUiConfig.
    */
-  // If a worker URL is in localStorage, don't let getUiConfig overwrite it
-  if (typeof window !== "undefined" && window.localStorage.getItem(WORKER_URL_KEY)) {
-    return;
-  }
-  proxyBaseUrl = resolveApiBase({
+  const resolvedProxyBaseUrl = resolveApiBase({
     explicitBase: receivedProxyBaseUrl || resolveDefaultBase(getWindowLocation()?.origin ?? null),
     serverRootPath,
   });
+  discoveredProxyBaseUrl = resolvedProxyBaseUrl || null;
+  if (typeof window !== "undefined" && window.localStorage.getItem(WORKER_URL_KEY)) {
+    return;
+  }
+  proxyBaseUrl = resolvedProxyBaseUrl;
 };
 
 const updateServerRootPath = (receivedServerRootPath: string) => {
@@ -222,6 +235,26 @@ export const getProxyBaseUrl = (): string => {
   }
   const browserLocation = getWindowLocation();
   return browserLocation?.origin ?? "";
+};
+
+export const getRuntimeBackendBaseUrl = (): string | null => runtimeBackendBaseUrl;
+
+export const getUiPageUrl = (url: string, relativePath = false): string => {
+  const browserLocation = getWindowLocation();
+  return normalizeBackendPageUrlToUiOrigin(url, runtimeBackendBaseUrl, browserLocation?.origin ?? null, relativePath);
+};
+
+const normalizeHttpUrl = (url: string | null | undefined): string | null => {
+  const trimmedUrl = (url ?? "").trim();
+  if (!trimmedUrl || !isValidHttpUrl(trimmedUrl)) return null;
+  return trimmedUrl.replace(/\/+$/, "");
+};
+
+export const getGatewayBaseUrl = (): string => {
+  if (typeof window !== "undefined" && window.localStorage.getItem(WORKER_URL_KEY)) {
+    return getProxyBaseUrl();
+  }
+  return gatewayBaseUrl ?? getProxyBaseUrl();
 };
 
 /**
@@ -250,7 +283,7 @@ export function switchToWorkerUrl(workerUrl: string | null): void {
       window.localStorage.removeItem(WORKER_URL_KEY);
     }
   }
-  proxyBaseUrl = workerUrl ?? defaultProxyBaseUrl;
+  proxyBaseUrl = workerUrl ?? discoveredProxyBaseUrl;
 }
 
 const HTTP_REQUEST = {
@@ -390,6 +423,7 @@ export interface WorkerInfo {
 export interface LiteLLMWellKnownUiConfig {
   server_root_path: string;
   proxy_base_url: string | null;
+  gateway_base_url?: string | null;
   auto_redirect_to_sso: boolean;
   admin_ui_disabled: boolean;
   sso_configured: boolean;
@@ -529,8 +563,31 @@ export const makeModelGroupPublic = async (accessToken: string, modelGroups: str
 
 export const getUiConfig = async () => {
   /**Special route to get the proxy base url and server root path */
-  const url = defaultProxyBaseUrl
-    ? `${defaultProxyBaseUrl}/litellm/.well-known/litellm-ui-config`
+  const runtimeBackendUrl = defaultProxyBaseUrl
+    ? null
+    : await (async (): Promise<string | null> => {
+        try {
+          // eslint-disable-next-line no-restricted-syntax -- read the UI static config before the API origin is known
+          const response = await fetch("/ui/litellm-runtime-config.json", { cache: "no-store" });
+          if (!response.ok) return null;
+          const runtimeConfig: unknown = await response.json();
+          if (
+            typeof runtimeConfig !== "object" ||
+            runtimeConfig === null ||
+            !("backend_url" in runtimeConfig) ||
+            typeof runtimeConfig.backend_url !== "string"
+          ) {
+            return null;
+          }
+          return normalizeHttpUrl(runtimeConfig.backend_url);
+        } catch {
+          return null;
+        }
+      })();
+  runtimeBackendBaseUrl = runtimeBackendUrl;
+  const discoveryBaseUrl = defaultProxyBaseUrl ?? runtimeBackendUrl;
+  const url = discoveryBaseUrl
+    ? `${discoveryBaseUrl}/litellm/.well-known/litellm-ui-config`
     : `/litellm/.well-known/litellm-ui-config`;
   const response = await fetch(url);
   const jsonData: LiteLLMWellKnownUiConfig = await response.json();
@@ -538,7 +595,8 @@ export const getUiConfig = async () => {
    * Update the proxy base url and server root path
    */
   updateServerRootPath(jsonData.server_root_path);
-  updateProxyBaseUrl(jsonData.server_root_path, jsonData.proxy_base_url);
+  updateProxyBaseUrl(jsonData.server_root_path, jsonData.proxy_base_url || runtimeBackendUrl);
+  gatewayBaseUrl = normalizeHttpUrl(jsonData.gateway_base_url);
   return jsonData;
 };
 
@@ -1126,9 +1184,12 @@ export const userGetInfoV2 = async (accessToken: string, userId?: string): Promi
   }
 };
 
-export const teamInfoCall = async (accessToken: string, teamID: string | null) => {
+export const teamInfoCall = async (accessToken: string, teamID: string | null, options?: { keyLimit?: number }) => {
   try {
-    return await apiClient.get(`/team/info`, { accessToken, query: { team_id: teamID || undefined } });
+    return await apiClient.get(`/team/info`, {
+      accessToken,
+      query: { team_id: teamID || undefined, key_limit: options?.keyLimit },
+    });
   } catch (error) {
     console.error("Failed to create key:", error);
     throw error;
@@ -1383,6 +1444,44 @@ export const dailyActivityExportCall = (
     accessToken: req.accessToken,
     query: dailyActivityQuery(entity, req, { export_type: exportType, format }),
   });
+
+export const userDailyActivityUserPageCall = (
+  req: DailyActivityRequest,
+  offset: number,
+  limit: number,
+): Promise<DailyActivityUserPageResponse> =>
+  apiClient.get<DailyActivityUserPageResponse>(`/user/daily/activity/aggregated/users`, {
+    accessToken: req.accessToken,
+    query: dailyActivityQuery("user", req, { offset, limit }),
+  });
+
+export const subscriptionUsageCall = (
+  accessToken: string,
+  startTime: Date,
+  endTime: Date,
+): Promise<SubscriptionUsageResponse> =>
+  apiClient.get<SubscriptionUsageResponse>("/subscription_accounts/usage", {
+    accessToken,
+    query: { start_date: formatDate(startTime), end_date: formatDate(endTime) },
+  });
+
+export const subscriptionAccountCreateCall = (
+  accessToken: string,
+  body: SubscriptionAccountCreateRequest,
+): Promise<SubscriptionFee> => apiClient.post<SubscriptionFee>("/subscription_accounts/new", { accessToken, body });
+
+export const subscriptionAccountUpdateCall = (
+  accessToken: string,
+  body: SubscriptionAccountUpdateRequest,
+): Promise<SubscriptionFee> => apiClient.post<SubscriptionFee>("/subscription_accounts/update", { accessToken, body });
+
+export const subscriptionAccountDeleteCall = (
+  accessToken: string,
+  subscriptionAccountId: string,
+): Promise<SubscriptionFee> => {
+  const body: SubscriptionAccountDeleteRequest = { subscription_account_id: subscriptionAccountId };
+  return apiClient.post<SubscriptionFee>("/subscription_accounts/delete", { accessToken, body });
+};
 
 export const cacheLeakageKeysCall = (req: DailyActivityRequest, limit?: number): Promise<CacheLeakageKeysResponse> =>
   apiClient.get<CacheLeakageKeysResponse>(`/user/daily/activity/aggregated/cache_leakage_keys`, {
@@ -2466,6 +2565,21 @@ export const gatewayDailyActivityCall = async (accessToken: string, startTime: D
   }
 };
 
+export const requestErrorActivityCall = async (accessToken: string, startTime: Date, endTime: Date) => {
+  try {
+    return await apiClient.get(`/gateway/errors/activity`, {
+      accessToken,
+      query: {
+        start_date: formatDate(startTime),
+        end_date: formatDate(endTime),
+      },
+    });
+  } catch (error) {
+    console.error("Failed to fetch request error activity:", error);
+    throw error;
+  }
+};
+
 export const getPossibleUserRoles = async (accessToken: string) => {
   try {
     const data = (await apiClient.get(`/user/available_roles`, { accessToken })) as Record<
@@ -2578,6 +2692,59 @@ export const credentialDeleteCall = async (accessToken: string, credentialName: 
     throw error;
   }
 };
+
+export interface UserProviderConnection {
+  credential_name: string;
+  provider: string;
+  connected: boolean;
+  github_login: string | null;
+  connected_at: string | null;
+}
+
+export interface UserProviderConnectionsResponse {
+  connections: UserProviderConnection[];
+}
+
+export interface UserConnectionStartResponse {
+  user_code: string;
+  verification_uri: string;
+  expires_in: number;
+  interval: number;
+  flow_handle: string;
+}
+
+type UserConnectionPollStatus = "pending" | "slow_down" | "expired" | "denied" | "no_copilot_seat" | "connected";
+
+export interface UserConnectionPollResponse {
+  status: UserConnectionPollStatus;
+  interval?: number | null;
+  github_login?: string | null;
+}
+
+const userConnectionPath = (credentialName: string): string =>
+  `/credentials/${encodeURIComponent(credentialName)}/user_connection`;
+
+export const userConnectionsListCall = (accessToken: string): Promise<UserProviderConnectionsResponse> =>
+  apiClient.get<UserProviderConnectionsResponse>("/credentials/user_connections", { accessToken });
+
+export const userConnectionStartCall = (
+  accessToken: string,
+  credentialName: string,
+): Promise<UserConnectionStartResponse> =>
+  apiClient.post<UserConnectionStartResponse>(`${userConnectionPath(credentialName)}/start`, { accessToken });
+
+export const userConnectionPollCall = (
+  accessToken: string,
+  credentialName: string,
+  flowHandle: string,
+): Promise<UserConnectionPollResponse> =>
+  apiClient.post<UserConnectionPollResponse>(`${userConnectionPath(credentialName)}/poll`, {
+    accessToken,
+    body: { flow_handle: flowHandle },
+  });
+
+export const userConnectionDeleteCall = (accessToken: string, credentialName: string): Promise<void> =>
+  apiClient.delete<void>(userConnectionPath(credentialName), { accessToken });
 
 export const credentialUpdateCall = async (
   accessToken: string,

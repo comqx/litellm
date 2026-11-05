@@ -44,7 +44,7 @@ import {
   toggleCase,
   type Draft,
 } from "./draft";
-import type { BuildSource, Dataset, DatasetCase, DatasetMessage, DatasetSummary, SkippedCase } from "./types";
+import type { BuildSource, Dataset, DatasetCase, DatasetMessage, DatasetSummary, DatasetToolCall, SkippedCase } from "./types";
 
 const NEW_DATASET = "__new__";
 
@@ -97,7 +97,7 @@ export function AddToDatasetDialog({ sources, agentName = "", onClose }: AddToDa
   const openSaved = useOpenSavedDataset();
 
   const built = build.data?.cases ?? [];
-  const chosen = built.filter((item) => !draft.excluded.has(item.id)).length;
+  const chosen = built.filter((item: DatasetCase) => !draft.excluded.has(item.id)).length;
   const busy = create.isPending || save.isPending;
   const targetReady = existingId ? dataset.isSuccess : name.trim().length > 0;
   const hasCases = build.isSuccess && chosen > 0;
@@ -275,7 +275,7 @@ function CasePreview({ build, draft, chosen, onToggle, onExpected }: CasePreview
         <p className="rounded-xl bg-muted/60 px-3 py-4 text-sm text-muted-foreground">没有可添加的新内容。</p>
       ) : (
         <ul aria-label="待添加用例" className="grid gap-2.5">
-          {cases.map((item, index) => (
+          {cases.map((item: DatasetCase, index: number) => (
             <CaseTile
               key={item.id}
               item={item}
@@ -363,7 +363,7 @@ export function CaseConversation({ messages }: { messages: readonly DatasetMessa
         <li key={index} className="grid gap-0.5 rounded-md bg-muted/50 px-2.5 py-1.5">
           <span className="font-medium text-foreground capitalize">{message.name || message.role}</span>
           {message.content && <span className="line-clamp-4 whitespace-pre-wrap">{message.content}</span>}
-          {message.tool_calls.map((call, callIndex) => (
+          {message.tool_calls.map((call: DatasetToolCall, callIndex: number) => (
             <code key={callIndex} className="line-clamp-2 font-mono break-all text-muted-foreground">
               {call.name}({call.arguments})
             </code>

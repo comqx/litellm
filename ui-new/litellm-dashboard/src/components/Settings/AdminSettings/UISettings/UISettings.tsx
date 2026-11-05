@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { uiHref } from "@/utils/uiHref";
 import PageVisibilitySettings from "./PageVisibilitySettings";
+import BackgroundChatSettings from "./BackgroundChatSettings";
 import { getUiSettingsFieldDescription, UI_SETTINGS_SECTION_DESCRIPTION } from "./uiSettingsFieldDescriptions";
 
 interface SettingRowProps {
@@ -358,6 +359,8 @@ export default function UISettings() {
               label="[Beta] 启用聊天页（页面将刷新）"
               description={getUiSettingsFieldDescription("enable_chat_ui")}
             />
+
+            <BackgroundChatSettings />
 
             <Separator />
             <div className="flex items-start justify-between gap-3">
