@@ -69,6 +69,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cva.config";
 import { rolesWithCapability } from "../utils/capabilities";
 import {
@@ -569,6 +570,7 @@ const Sidebar_: React.FC<SidebarProps> = ({
   disableVectorStoresForInternalUsers,
   allowVectorStoresForTeamAdmins,
 }) => {
+  const { t } = useTranslation();
   const { userId, accessToken, userRole, isViewOnly } = useAuthorized();
   const hideSidebarResourceLinks = useHideSidebarResourceLinks();
   const showSidebarResourceLinks = !hideSidebarResourceLinks;
@@ -735,7 +737,7 @@ const Sidebar_: React.FC<SidebarProps> = ({
               variant="ghost"
               size="icon-sm"
               onClick={onToggleCollapsed}
-              aria-label={collapsed ? "Expand sidebar" : "收起侧边栏"}
+              aria-label={collapsed ? t("shell.navbar.expandSidebar") : t("shell.navbar.collapseSidebar")}
               className="flex-none text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
               {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}

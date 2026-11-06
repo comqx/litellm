@@ -24,14 +24,6 @@ const METRIC_NOUN: Record<UsageMetric, ParseKeys> = {
   tokens: "usage.breakdownChart.metricNoun.tokens",
   requests: "usage.breakdownChart.metricNoun.requests",
 };
-const GRANULARITY_OPTIONS = [
-  { value: "day", label: "Daily" },
-  { value: "week", label: "Weekly" },
-] as const satisfies readonly { value: Granularity; label: string }[];
-const SCALE_OPTIONS = [
-  { value: "linear", label: "Linear" },
-  { value: "log", label: "Log" },
-] as const satisfies readonly { value: StackedUsageScale; label: string }[];
 
 interface UsageBreakdownChartProps {
   results: readonly DailyData[];
@@ -49,6 +41,22 @@ export default function UsageBreakdownChart({
   dimension = "model_groups",
 }: UsageBreakdownChartProps) {
   const { t } = useTranslation();
+  const granularityOptions = useMemo(
+    () =>
+      [
+        { value: "day", label: t("usage.breakdownChart.granularity.daily") },
+        { value: "week", label: t("usage.breakdownChart.granularity.weekly") },
+      ] as const satisfies readonly { value: Granularity; label: string }[],
+    [t],
+  );
+  const scaleOptions = useMemo(
+    () =>
+      [
+        { value: "linear", label: t("usage.breakdownChart.scale.linear") },
+        { value: "log", label: t("usage.breakdownChart.scale.log") },
+      ] as const satisfies readonly { value: StackedUsageScale; label: string }[],
+    [t],
+  );
   const [metric, setMetric] = useState<UsageMetric>("spend");
   const state: BreakdownState = { metric, dimension };
   const [granularity, setGranularity] = useState<Granularity>("day");
@@ -80,13 +88,13 @@ export default function UsageBreakdownChart({
           <Segmented
             label={t("usage.breakdownChart.bucketSize")}
             value={granularity}
-            options={GRANULARITY_OPTIONS}
+            options={granularityOptions}
             onChange={setGranularity}
           />
           <Segmented
             label={t("usage.breakdownChart.scaleLabel")}
             value={scale}
-            options={SCALE_OPTIONS}
+            options={scaleOptions}
             onChange={setScale}
           />
         </>

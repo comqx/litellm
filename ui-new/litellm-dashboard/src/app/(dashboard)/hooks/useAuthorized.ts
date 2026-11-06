@@ -5,7 +5,7 @@ import { clearTokenCookies, getCookie } from "@/utils/cookieUtils";
 import { checkTokenValidity, decodeToken } from "@/utils/jwtUtils";
 import { buildLoginUrlWithReturn, getLoginUrl, storeReturnUrl } from "@/utils/returnUrlUtils";
 import { useCallback, useEffect, useMemo } from "react";
-import { effectiveSessionRole, formatUserRole, isViewOnlySessionRole } from "@/utils/roles";
+import { effectiveSessionRole, formatUserRoleLabel, isViewOnlySessionRole } from "@/utils/roles";
 import { useUIConfig } from "./uiConfig/useUIConfig";
 
 const useAuthorized = () => {
@@ -46,7 +46,7 @@ const useAuthorized = () => {
     userId: decoded?.user_id ?? null,
     userEmail: decoded?.user_email ?? null,
     userRole: effectiveSessionRole(decoded?.user_role),
-    userRoleLabel: formatUserRole(decoded?.user_role),
+    userRoleLabel: formatUserRoleLabel(decoded?.user_role),
     isViewOnly: isViewOnlySessionRole(decoded?.user_role),
     premiumUser: decoded?.premium_user ?? null,
     disabledPersonalKeyCreation: decoded?.disabled_non_admin_personal_key_creation ?? null,

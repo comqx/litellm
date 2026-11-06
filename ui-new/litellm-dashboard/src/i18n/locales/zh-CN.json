@@ -1,1 +1,517 @@
-{}
+{
+  "shared": {
+    "advancedDatePicker": {
+      "selectTimeRange": "选择时间范围",
+      "invalidDateFormat": "日期格式无效",
+      "endBeforeStart": "结束日期不能早于开始日期",
+      "selectDateRange": "选择日期范围",
+      "relativeTime": "相对时间",
+      "startAndEndDates": "开始与结束日期",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
+      "from": "从：",
+      "to": "至：",
+      "cancel": "取消",
+      "apply": "应用"
+    },
+    "budgetPeriodTooltip": {
+      "noBudgetSet": "未设置预算",
+      "spendThisPeriod": "本周期花费",
+      "spendSoFar": "当前花费"
+    },
+    "dataTable": {
+      "loadingMessage": "加载中…",
+      "defaultEmptyState": {
+        "title": "暂无结果",
+        "description": "没有符合搜索或筛选条件的行。"
+      },
+      "filterDrawer": {
+        "title": "筛选",
+        "apply": "应用筛选",
+        "reset": "重置"
+      },
+      "pagination": {
+        "rowsPerPage": "每页行数",
+        "noResults": "暂无结果",
+        "showing": "显示 {{start}}-{{end}}，共 {{total}} 条",
+        "pageOf": "第 {{page}} 页 / 共 {{total}} 页",
+        "firstPage": "第一页",
+        "previousPage": "上一页",
+        "nextPage": "下一页",
+        "lastPage": "最后一页"
+      },
+      "toolbar": {
+        "search": "搜索",
+        "removeFilter": "移除 {{label}} 筛选",
+        "clearAll": "全部清除",
+        "refresh": "刷新",
+        "columns": "列",
+        "filters": "筛选"
+      },
+      "viewOptions": {
+        "view": "视图"
+      }
+    },
+    "errorState": {
+      "title": "加载失败",
+      "retry": "重试"
+    }
+  },
+  "home": {
+    "page": {
+      "title": "首页",
+      "createKey": "新建虚拟密钥",
+      "usageFailed": "加载用量失败",
+      "retry": "重试",
+      "whatsNew": "LiteLLM 更新动态",
+      "leaderboard": {
+        "title": "模型排行榜",
+        "subtitle": "近 {{days}} 天 Token 占比，及前后半周期变化"
+      }
+    },
+    "updatesFeed": {
+      "title": "更新动态",
+      "viewAll": "查看全部",
+      "failed": "加载动态失败",
+      "retry": "重试",
+      "empty": "暂无动态"
+    }
+  },
+  "shell": {
+    "navbar": {
+      "expandSidebar": "展开侧边栏",
+      "collapseSidebar": "收起侧边栏"
+    },
+    "docsLink": {
+      "label": "文档"
+    },
+    "blogDropdown": {
+      "trigger": "博客",
+      "empty": "暂无动态",
+      "viewAll": "查看全部动态",
+      "failed": "加载动态失败",
+      "retry": "重试"
+    },
+    "dashboardCommunityLinks": {
+      "joinSlack": "加入 Slack"
+    },
+    "userMenu": {
+      "premium": "高级版",
+      "standard": "标准版",
+      "role": "角色",
+      "changePassword": "修改密码",
+      "logout": "退出登录",
+      "hideNewBadges": "隐藏新功能标识",
+      "hidePrompts": "隐藏全部提示",
+      "hideBlogPosts": "隐藏博客文章",
+      "hideBouncingIcon": "隐藏弹跳图标"
+    }
+  },
+  "usage": {
+    "pageView": {
+      "accessDenied": "您无权查看该用量视图",
+      "linkCopied": "链接已复制",
+      "copyShareLink": "复制分享链接",
+      "exportData": "导出数据",
+      "spendLoadFailed": "加载花费数据失败",
+      "tabs": {
+        "overview": "总览",
+        "modelActivity": "模型活跃度",
+        "keyActivity": "密钥活跃度",
+        "userActivity": "用户活跃度",
+        "mcpServerActivity": "MCP 服务器活跃度",
+        "endpointActivity": "端点活跃度",
+        "errors": "错误"
+      },
+      "gatewayByEndpoint": {
+        "title": "按端点统计的网关请求",
+        "subtitle": "每条路由的成功和失败请求数",
+        "successful": "成功",
+        "failed": "失败"
+      },
+      "exportTitle": "导出用量数据",
+      "modelSearch": {
+        "label": "搜索模型",
+        "placeholder": "按模型名称搜索",
+        "clear": "清除模型搜索",
+        "noMatch": "该日期范围内没有匹配「{{query}}」的模型"
+      }
+    },
+    "viewSelect": {
+      "title": "用量",
+      "description": "选择要查看的用量数据",
+      "options": {
+        "global": {
+          "label": "全局用量",
+          "adminLabel": "全局用量",
+          "nonAdminLabel": "您的用量",
+          "description": "查看全部资源的用量",
+          "adminDescription": "查看全部资源的用量",
+          "nonAdminDescription": "查看您的用量"
+        },
+        "myUsage": {
+          "label": "您的用量",
+          "description": "查看您自己的用量"
+        },
+        "organization": {
+          "label": "组织用量",
+          "description": "查看各组织的用量"
+        },
+        "team": {
+          "label": "团队用量",
+          "description": "按团队查看用量"
+        },
+        "customer": {
+          "label": "客户用量",
+          "description": "按客户账户查看用量"
+        }
+      }
+    },
+    "statStrip": {
+      "spend": "花费",
+      "budgetHint": "预算 {{budget}} 中",
+      "noBudget": "未设置预算",
+      "totalRequests": "总请求数",
+      "successfulCount": "<count/> 成功",
+      "failedCount": "<count/> 失败",
+      "totalTokens": "总 Token 数",
+      "exactTokens": "{{tokens}} 个 Token",
+      "cacheReadHint": "{{tokens}} 缓存读取",
+      "viewTokenBreakdown": "查看 Token 明细",
+      "avgCostPerRequest": "单次请求平均成本",
+      "avgLatency": "平均延迟",
+      "successRateHint": "{{rate}}% 成功率",
+      "tokenPopover": {
+        "title": "总 Token 数包含哪些？",
+        "inputTokens": "输入 Token",
+        "cacheReads": "缓存读取",
+        "cacheWrites": "缓存写入",
+        "outputTokens": "输出 Token",
+        "totalTokens": "总 Token 数",
+        "pricingNote": "输入包含缓存读取与写入。缓存输入单独计价，因此仅凭 Token 总数无法解释花费。",
+        "clientNote": "客户端可能显示不同的 Token 子集。对比计数前请确认人员、客户端与时间范围一致。"
+      }
+    },
+    "overview": {
+      "topVirtualKeys": "虚拟密钥排行",
+      "topUsersBySpend": "用户花费排行",
+      "otherSeries": "其他"
+    },
+    "breakdownChart": {
+      "metricNoun": {
+        "spend": "花费",
+        "tokens": "Token 数",
+        "requests": "请求数"
+      },
+      "granularity": {
+        "daily": "每日",
+        "weekly": "每周"
+      },
+      "scale": {
+        "linear": "线性",
+        "log": "对数"
+      },
+      "metricToggle": {
+        "spend": "花费",
+        "tokens": "Token 数",
+        "requests": "请求数"
+      },
+      "title": "{{granularity}}用量",
+      "subtitle": "按模型统计的{{granularity}}{{metric}}（前 8 名，其余归为「其他」）",
+      "bucketSize": "时间粒度",
+      "scaleLabel": "刻度",
+      "topModels": "热门模型",
+      "loadingTopModels": "正在加载热门模型"
+    },
+    "breakdown": {
+      "metricLabel": "指标",
+      "groupByLabel": "分组",
+      "dimensions": {
+        "modelGroups": "模型",
+        "models": "部署",
+        "providers": "供应商"
+      },
+      "byProvider": "由 {{provider}}",
+      "empty": "该时间范围内无用量"
+    },
+    "topAgents": {
+      "title": "热门代理",
+      "subtitle": "按代理统计的每日用量，来自每个请求的 User-Agent",
+      "viewActivity": "查看活跃度",
+      "empty": "该时间范围内无代理流量"
+    },
+    "topUsers": {
+      "failed": "无法加载用户排行。",
+      "retry": "重试",
+      "loading": "正在加载用户…",
+      "empty": "该日期范围内无用户活跃度",
+      "columns": {
+        "user": "用户",
+        "spend": "花费",
+        "requests": "请求数"
+      }
+    },
+    "subscriptionCost": {
+      "card": {
+        "title": "订阅固定成本",
+        "loadFailed": "无法加载此时间范围内的订阅账户。",
+        "noAccounts": "无订阅账户"
+      },
+      "columns": {
+        "provider": "供应商",
+        "account": "账户",
+        "deployments": "部署",
+        "monthlyFee": "月费",
+        "fixedCost": "范围内固定成本"
+      }
+    },
+    "teamUserSpend": {
+      "columns": {
+        "user": "用户",
+        "spend": "花费",
+        "requests": "请求数",
+        "team": "团队"
+      },
+      "title": "团队内用户花费"
+    },
+    "entityUsage": {
+      "chart": {
+        "metricTitle": {
+          "spend": "花费",
+          "tokens": "Token 数",
+          "requests": "请求数"
+        }
+      }
+    },
+    "endpointUsage": {
+      "table": {
+        "columns": {
+          "endpoint": "端点",
+          "spend": "花费",
+          "totalTokens": "总 Token 数",
+          "successRate": "成功率"
+        },
+        "title": "端点"
+      }
+    },
+    "page": {
+      "loadingSettings": "正在加载用量设置"
+    }
+  },
+  "costOptimization": {
+    "view": {
+      "title": "成本优化",
+      "description": "跟踪并配置节省成本的机制：提示压缩与提示缓存。自动路由器位于「模型与端点」的「自动路由器」标签页",
+      "tabs": {
+        "overall": "总览",
+        "compression": "提示压缩",
+        "caching": "提示缓存",
+        "autoRouter": "自动路由器"
+      },
+      "experimental": {
+        "title": "这是一个实验性面板",
+        "feedback": "有反馈？在此参与<discussion>讨论</discussion>"
+      },
+      "fetchFailed": "获取花费数据失败，下方节省金额可能为空而非最终值。请刷新页面重试。"
+    },
+    "promptCaching": {
+      "dateRangeLabel": "请求与缓存泄漏的日期范围"
+    }
+  },
+  "caching": {
+    "dashboard": {
+      "tabs": {
+        "analytics": "缓存分析",
+        "health": "缓存健康",
+        "settings": "缓存设置",
+        "coordination": "协调 Redis"
+      },
+      "lastRefreshed": "上次刷新：",
+      "refresh": "刷新",
+      "filters": {
+        "virtualKeysPlaceholder": "选择虚拟密钥",
+        "noVirtualKeys": "未找到虚拟密钥",
+        "modelsPlaceholder": "选择模型",
+        "noModels": "未找到模型"
+      },
+      "stats": {
+        "cacheHitRatio": "缓存命中率",
+        "cacheHits": "缓存命中",
+        "cachedCompletionTokens": "缓存的 Completion Token"
+      },
+      "series": {
+        "apiRequests": "LLM API 请求",
+        "cacheHits": "缓存命中",
+        "failed": "失败请求",
+        "cachedCompletionTokens": "缓存的 Completion Token",
+        "generatedCompletionTokens": "生成的 Completion Token"
+      },
+      "requestsChart": {
+        "title": "缓存命中与 API 请求",
+        "loadFailed": "加载缓存活动失败"
+      },
+      "tokensChart": {
+        "title": "缓存与生成的 Completion Token 对比"
+      }
+    }
+  },
+  "vectorStores": {
+    "create": {
+      "title": "创建向量库",
+      "upload": {
+        "title": "步骤 1：上传文档",
+        "description": "上传一个或多个文档（PDF、TXT、DOCX、MD）。每个文件最大 50MB。",
+        "dropzone": "点击或拖拽文件到此区域上传"
+      },
+      "configure": {
+        "title": "步骤 2：配置向量库"
+      },
+      "buttons": {
+        "create": "创建向量库",
+        "creating": "正在创建向量库…"
+      }
+    }
+  },
+  "organizations": {
+    "panel": {
+      "enterpriseNotice": "这是 LiteLLM 企业版功能，需要有效的密钥才能使用。在此<pricing>获取试用密钥</pricing>。",
+      "createButton": "+ 新建组织",
+      "listHint": "点击组织 ID 查看详情。"
+    },
+    "table": {
+      "loading": "正在加载组织…",
+      "empty": {
+        "noneTitle": "尚无组织",
+        "noneDescription": "创建组织以分组团队、模型和预算。"
+      }
+    }
+  },
+  "modelsAndEndpoints": {
+    "page": {
+      "title": "模型管理",
+      "adminDescription": "为代理添加并管理模型",
+      "userDescription": "查看您的模型，并管理允许的团队路由器。",
+      "refreshModels": "刷新模型",
+      "tabs": {
+        "deployedModels": "已部署模型",
+        "yourModels": "您的模型",
+        "add": "添加模型",
+        "autoRouters": "自动路由器",
+        "llmCredentials": "LLM 凭证",
+        "passThrough": "透传端点",
+        "health": "健康状态",
+        "retrySettings": "模型重试设置",
+        "modelGroupAlias": "模型组别名",
+        "accessGroupBudgets": "模型访问组预算",
+        "priceData": "价格数据重载"
+      }
+    },
+    "autoRoutersPanel": {
+      "title": "自动路由器",
+      "description": "自动路由位于部署之上，按请求选择模型。它们像普通模型一样被调用，因此客户端仍可使用单一模型名称。",
+      "addAutoRouter": "添加自动路由器"
+    }
+  },
+  "guardrailsMonitor": {
+    "page": {
+      "title": "护栏监控"
+    },
+    "overview": {
+      "title": "护栏监控",
+      "description": "监控所有请求的护栏表现",
+      "export": {
+        "label": "导出数据",
+        "comingSoon": "即将推出"
+      },
+      "metrics": {
+        "totalEvaluations": "评估总数",
+        "blockedRequests": "已阻止请求",
+        "passRate": "通过率",
+        "avgLatency": "平均增加延迟",
+        "guardrailCost": "护栏成本",
+        "activeGuardrails": "活跃护栏"
+      },
+      "columns": {
+        "status": "状态",
+        "guardrail": "护栏",
+        "provider": "供应商",
+        "requests": "请求数",
+        "failRate": "失败率",
+        "avgLatency": "平均增加延迟",
+        "cost": "成本"
+      },
+      "loading": "加载中",
+      "loadFailed": "加载数据失败，请重试。",
+      "empty": "该时间段无数据"
+    }
+  },
+  "playground": {
+    "page": {
+      "title": "调试台",
+      "description": "通过网关使用任意模型、密钥、护栏或工具发送测试请求",
+      "tabs": {
+        "chat": "对话",
+        "compare": "对比",
+        "compliance": "合规",
+        "decisions": "决策",
+        "agentBuilder": "智能体构建器"
+      }
+    },
+    "chat": {
+      "settings": {
+        "trigger": "设置",
+        "keySources": {
+          "label": "虚拟密钥来源",
+          "session": "当前 UI 会话",
+          "custom": "虚拟密钥"
+        },
+        "virtualKey": {
+          "label": "虚拟密钥",
+          "placeholder": "粘贴虚拟密钥",
+          "hint": "选择虚拟密钥以测试其可访问范围"
+        },
+        "baseUrl": {
+          "label": "自定义代理 Base URL",
+          "placeholder": "与当前控制台相同",
+          "clear": "清除",
+          "target": "请求将发往 {{url}}"
+        },
+        "toggles": {
+          "stream": "流式响应",
+          "simulateFallback": "模拟 fallback",
+          "sessions": "在网关上保留上下文"
+        }
+      },
+      "chatUi": {
+        "configurations": "配置",
+        "keySource": "虚拟密钥来源",
+        "virtualKey": "虚拟密钥",
+        "currentSession": "当前 UI 会话",
+        "customProxyBaseUrl": "自定义代理 Base URL",
+        "endpointType": "端点类型",
+        "selectModel": "选择模型",
+        "selectAModel": "选择模型",
+        "loadingModels": "正在加载模型…"
+      }
+    }
+  },
+  "logs": {
+    "page": {
+      "loading": "加载中",
+      "tabs": {
+        "requestLogs": "请求日志",
+        "auditLogs": "审计日志",
+        "deletedKeys": "已删除密钥",
+        "deletedTeams": "已删除团队"
+      }
+    },
+    "request": {
+      "table": {
+        "filtersTitle": "筛选",
+        "filtersDescription": "缩小请求日志范围",
+        "loading": "正在加载请求日志…",
+        "searchPlaceholder": "按 ID 搜索日志…"
+      }
+    }
+  }
+}

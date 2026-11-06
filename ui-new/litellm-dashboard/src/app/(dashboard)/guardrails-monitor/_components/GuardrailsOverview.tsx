@@ -1,6 +1,7 @@
 import type { ColumnDef, OnChangeFn, SortingState } from "@tanstack/react-table";
 import { CircleDollarSign, Download, HeartPulse, Settings, TrendingUp, TriangleAlert } from "lucide-react";
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { DataTable, DataTableSortHeader } from "@/components/shared/DataTable";
 import { MoneyCell } from "@/components/shared/table_cells/money_cell";
 import { CellTooltip } from "@/components/shared/table_cells/cell_tooltip";
@@ -118,6 +119,7 @@ export function GuardrailsOverview({
   onSelectGuardrail,
   dateRangeControl,
 }: GuardrailsOverviewProps) {
+  const { t } = useTranslation();
   const [sortBy, setSortBy] = useState<SortKey>("failRate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [evaluationModalOpen, setEvaluationModalOpen] = useState(false);
@@ -290,9 +292,9 @@ export function GuardrailsOverview({
         <PageHeaderDescription>监控所有请求的护栏表现</PageHeaderDescription>
         <PageHeaderControls className="justify-end">
           {dateRangeControl}
-          <Button variant="outline" title="即将推出">
+          <Button variant="outline" title={t("guardrailsMonitor.overview.export.comingSoon")}>
             <Download className="size-4" />
-            导出数据
+            {t("guardrailsMonitor.overview.export.label")}
           </Button>
         </PageHeaderControls>
       </PageHeader>

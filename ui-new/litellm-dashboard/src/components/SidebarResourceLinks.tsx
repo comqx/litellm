@@ -10,6 +10,7 @@ import { cn } from "@/lib/cva.config";
 import { BookOpen, Slack } from "lucide-react";
 import Link from "next/link";
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 const SLACK_URL = "https://www.litellm.ai/support";
 
@@ -18,6 +19,9 @@ interface SidebarResourceLinksProps {
 }
 
 export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ collapsed }) => {
+  const { t } = useTranslation();
+  const docsLabel = t("shell.docsLink.label");
+  const slackLabel = t("shell.dashboardCommunityLinks.joinSlack");
   const hideDocs = useHideDocsLink();
   const hideCommunityLinks = useDisableShowPrompts();
   const disableBlogPosts = useDisableBlogPosts();
@@ -32,8 +36,8 @@ export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ coll
       href={DOCS_URL}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="文档"
-      title="文档"
+      aria-label={docsLabel}
+      title={docsLabel}
       className={cn(
         buttonVariants({ variant: "ghost", size: "icon-sm" }),
         "text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-foreground",
@@ -48,7 +52,7 @@ export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ coll
       rel="noopener noreferrer"
       className="rounded-md px-2 py-1.5 text-[13px] font-medium text-sidebar-foreground/72 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
     >
-      文档
+      {docsLabel}
     </Link>
   );
 
@@ -58,8 +62,8 @@ export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ coll
         href={SLACK_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="加入 Slack"
-        title="LiteLLM Slack 社区"
+        aria-label={slackLabel}
+        title={slackLabel}
         className={cn(
         buttonVariants({ variant: "ghost", size: "icon-sm" }),
         "text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-foreground",
@@ -74,7 +78,7 @@ export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ coll
         rel="noopener noreferrer"
         className="rounded-md px-2 py-1.5 text-[13px] font-medium text-sidebar-foreground/72 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
       >
-        加入 Slack
+        {slackLabel}
       </Link>
     );
 

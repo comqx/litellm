@@ -1,0 +1,22 @@
+{
+  "Virtual Keys": "密钥",
+  "Playground": "调试台",
+  "Models + Endpoints": "模型与端点",
+  "Agentic": "智能体",
+  "Agents": "智能体",
+  "Workflow Runs": "工作流运行",
+  "Memory": "记忆",
+  "MCP Servers": "MCP 服务器",
+  "Guardrails": "护栏",
+  "Policies": "策略",
+  "Tools": "工具",
+  "Search Tools": "搜索工具",
+  "Vector Stores": "向量存储",
+  "Usage": "用量",
+  "Logs": "日志",
+  "Alerts": "告警",
+  "Cost Optimization": "成本优化",
+  "Home": "首页",
+  "Settings": "设置",
+  "LiteLLM": "LiteLLM"
+}

@@ -1,0 +1,26 @@
+# Paths relative to ui-new/litellm-dashboard.
+# A trailing slash keeps the whole directory.
+# These files are the fork. A sync must not overwrite them.
+src/i18n/locales/zh-CN.json
+src/i18n/i18n.ts
+src/i18n/navLabels.ts
+src/lib/productBranding.ts
+src/components/brand/
+src/components/SidebarBrand.tsx
+src/components/SidebarResourceLinks.tsx
+src/app/login/BrandLockup.tsx
+src/app/login/GatewayHub.tsx
+src/app/(dashboard)/hooks/useUiChromeHideFlags.ts
+src/app/(dashboard)/hooks/createLocalStorageBooleanFlag.ts
+src/app/(dashboard)/hooks/useHideAutoRouterAnnouncement.ts
+src/app/(dashboard)/old-usage/
+src/app/(dashboard)/home/_components/homeBlogZh.ts
+src/app/(dashboard)/users/_components/uiRoleLabelZh.ts
+src/app/(dashboard)/router-settings/_components/settingDescriptionZh.ts
+src/app/(dashboard)/agents/_components/agent_create_info_zh.ts
+src/components/alerting/alertingFieldDescriptionZh.ts
+src/components/routing_groups/routingStrategyDescriptionZh.ts
+src/components/publicModelHub/modelHubDisplayLabels.ts
+src/components/router_settings/routerFieldCopy.ts
+src/components/email_events/emailEventCopy.ts
+src/components/Settings/AdminSettings/UISettings/uiSettingsFieldDescriptions.ts

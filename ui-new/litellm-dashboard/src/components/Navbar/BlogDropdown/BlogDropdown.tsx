@@ -12,6 +12,7 @@ import {
 import { ChevronDown, LoaderCircle } from "lucide-react";
 import React from "react";
 import { cn } from "@/lib/cva.config";
+import { useTranslation } from "react-i18next";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00");
@@ -30,6 +31,7 @@ type BlogDropdownProps = {
 };
 
 export const BlogDropdown: React.FC<BlogDropdownProps> = ({ placement = "navbar" }) => {
+  const { t } = useTranslation();
   const disableBlogPosts = useDisableBlogPosts();
 
   const { data, isLoading, isError, refetch } = useBlogPosts();
@@ -50,16 +52,16 @@ export const BlogDropdown: React.FC<BlogDropdownProps> = ({ placement = "navbar"
     if (isError) {
       return (
         <div className="flex items-center gap-2 px-2 py-1.5 text-sm">
-          <span className="text-destructive">加载动态失败</span>
+          <span className="text-destructive">{t("shell.blogDropdown.failed")}</span>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
-            重试
+            {t("shell.blogDropdown.retry")}
           </Button>
         </div>
       );
     }
 
     if (!data || data.posts.length === 0) {
-      return <div className="px-2 py-1.5 text-sm text-muted-foreground">暂无动态</div>;
+      return <div className="px-2 py-1.5 text-sm text-muted-foreground">{t("shell.blogDropdown.empty")}</div>;
     }
 
     return (
@@ -80,7 +82,7 @@ export const BlogDropdown: React.FC<BlogDropdownProps> = ({ placement = "navbar"
         <DropdownMenuSeparator />
         <DropdownMenuItem>
           <a href="https://docs.litellm.ai/blog" target="_blank" rel="noopener noreferrer">
-            查看全部动态
+            {t("shell.blogDropdown.viewAll")}
           </a>
         </DropdownMenuItem>
       </>
@@ -100,7 +102,7 @@ export const BlogDropdown: React.FC<BlogDropdownProps> = ({ placement = "navbar"
           />
         }
       >
-        博客
+        {t("shell.blogDropdown.trigger")}
         <ChevronDown
           className={cn("size-2.5", placement === "sidebar" ? "text-sidebar-foreground/65" : "text-muted-foreground")}
           aria-hidden

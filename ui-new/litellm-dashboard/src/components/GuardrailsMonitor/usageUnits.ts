@@ -17,7 +17,7 @@ export const counterLabel = (counter: string): string =>
 
 export const unpricedSummary = (untracked: UsageUnits): string | null => {
   const total = totalUnits(untracked);
-  return total > 0 ? `${total.toLocaleString()} ${total === 1 ? "unit" : "units"} unpriced` : null;
+  return total > 0 ? `${total.toLocaleString()} 个用量单位未计价` : null;
 };
 
 export interface CounterMath {
@@ -56,9 +56,7 @@ export const counterMathRow = (row: CounterMath): MathRow => {
     label,
     parts: [pricedUnits(row).toLocaleString(), `× ${formatUnitPrice(price)}`, `= ${formatCost(row.cost)}`],
     note:
-      row.unpriced > 0
-        ? `${row.unpriced.toLocaleString()} unpriced ${row.unpriced === 1 ? "unit" : "units"} left out`
-        : null,
+      row.unpriced > 0 ? `${row.unpriced.toLocaleString()} 个未计价用量单位未计入` : null,
   };
 };
 

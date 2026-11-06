@@ -104,6 +104,32 @@ export const formatUserRole = (userRole: string): string => {
   }
 };
 
+export const formatUserRoleLabel = (userRole: string | null | undefined): string => {
+  if (!userRole) {
+    return "未定义角色";
+  }
+  switch (userRole.toLowerCase()) {
+    case "proxy_admin":
+      return "管理员";
+    case "proxy_admin_viewer":
+      return "管理员查看者";
+    case "org_admin":
+      return "组织管理员";
+    case "internal_user":
+      return "内部用户";
+    case "internal_user_viewer":
+    case "internal_viewer":
+      return "内部查看者";
+    case "app_owner":
+    case "demo_app_owner":
+      return "应用所有者";
+    case "app_user":
+      return "应用用户";
+    default:
+      return formatUserRole(userRole);
+  }
+};
+
 export const isOrgAdminSessionRole = (userRole?: string | null): boolean =>
   userRole === ORG_ADMIN_MEMBERSHIP_ROLE || userRole === formatUserRole(ORG_ADMIN_MEMBERSHIP_ROLE);
 

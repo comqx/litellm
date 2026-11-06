@@ -21,17 +21,7 @@ import {
 import { Segmented } from "./Primitives";
 import { providerForModel } from "./modelProvider";
 
-const METRIC_OPTIONS = [
-  { value: "spend", label: "Spend" },
-  { value: "tokens", label: "Tokens" },
-  { value: "requests", label: "Requests" },
-] as const satisfies readonly { value: UsageMetric; label: string }[];
 
-const DIMENSION_OPTIONS = [
-  { value: "model_groups", label: "Model" },
-  { value: "models", label: "Deployment" },
-  { value: "providers", label: "Provider" },
-] as const satisfies readonly { value: BreakdownDimension; label: string }[];
 
 export interface BreakdownState {
   metric: UsageMetric;
@@ -62,19 +52,37 @@ export function BreakdownControls({
   showDimension?: boolean;
 }) {
   const { t } = useTranslation();
+  const metricOptions = useMemo(
+    () =>
+      [
+        { value: "spend", label: t("usage.breakdownChart.metricToggle.spend") },
+        { value: "tokens", label: t("usage.breakdownChart.metricToggle.tokens") },
+        { value: "requests", label: t("usage.breakdownChart.metricToggle.requests") },
+      ] as const satisfies readonly { value: UsageMetric; label: string }[],
+    [t],
+  );
+  const dimensionOptions = useMemo(
+    () =>
+      [
+        { value: "model_groups", label: t("usage.breakdown.dimensions.modelGroups") },
+        { value: "models", label: t("usage.breakdown.dimensions.models") },
+        { value: "providers", label: t("usage.breakdown.dimensions.providers") },
+      ] as const satisfies readonly { value: BreakdownDimension; label: string }[],
+    [t],
+  );
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Segmented
         label={t("usage.breakdown.metricLabel")}
         value={state.metric}
-        options={METRIC_OPTIONS}
+        options={metricOptions}
         onChange={(metric) => onChange({ ...state, metric })}
       />
       {showDimension && (
         <Segmented
           label={t("usage.breakdown.groupByLabel")}
           value={state.dimension}
-          options={DIMENSION_OPTIONS}
+          options={dimensionOptions}
           onChange={(dimension) => onChange({ ...state, dimension })}
         />
       )}

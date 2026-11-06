@@ -152,7 +152,7 @@ describe("useAuthorized", () => {
     expect(result.current.userId).toBe("user-1");
     expect(result.current.userEmail).toBe("user@example.com");
     expect(result.current.userRole).toBe("Admin");
-    expect(result.current.userRoleLabel).toBe("Admin");
+    expect(result.current.userRoleLabel).toBe("管理员");
     expect(result.current.isViewOnly).toBe(false);
     expect(result.current.premiumUser).toBe(true);
     expect(result.current.disabledPersonalKeyCreation).toBe(false);
@@ -193,7 +193,7 @@ describe("useAuthorized", () => {
     });
 
     expect(result.current.userRole).toBe("Admin");
-    expect(result.current.userRoleLabel).toBe("Proxy 管理员查看者");
+    expect(result.current.userRoleLabel).toBe("管理员查看者");
     expect(result.current.isViewOnly).toBe(true);
     expect(replaceMock).not.toHaveBeenCalled();
     expect(clearTokenCookiesMock).not.toHaveBeenCalled();

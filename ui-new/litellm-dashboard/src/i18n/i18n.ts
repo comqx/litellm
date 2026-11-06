@@ -17,7 +17,7 @@ const options: InitOptions = {
   interpolation: { escapeValue: false },
   resources: {
     en: { translation: en },
-    "zh-CN": { translation: zhCN as typeof en },
+    "zh-CN": { translation: zhCN as unknown as typeof en },
   },
   initAsync: false,
 };

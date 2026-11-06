@@ -1,3 +1,4 @@
+import "@/i18n/i18n";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -116,9 +117,8 @@ describe("GuardrailsOverview", () => {
     renderOverview(onSelectGuardrail);
 
     expect(await screen.findByRole("columnheader", { name: "用量单位" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: /Requests/ })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: /Fail Rate/ })).toBeInTheDocument();
-    expect(await screen.findByText("加载数据失败，请重试。")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "请求数" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "失败率" })).toBeInTheDocument();
     expect(screen.getByText("1,200")).toBeInTheDocument();
     expect(screen.getByText("18%")).toBeInTheDocument();
     expect(screen.getByText("45ms")).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("GuardrailsOverview", () => {
     renderOverview();
 
     expect(await screen.findByRole("columnheader", { name: "用量单位" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: /Cost/ })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "成本" })).toBeInTheDocument();
 
     const priced = rowNamed("High Failure Guardrail");
     expect(within(priced).getByText("1,250")).toBeInTheDocument();
@@ -171,12 +171,12 @@ describe("GuardrailsOverview", () => {
         .slice(1)
         .map((r) => r.textContent ?? "");
 
-    await user.click(await screen.findByRole("button", { name: /Cost/ }));
+    await user.click(await screen.findByRole("button", { name: "成本" }));
     await waitFor(() => expect(rowNames()[0]).toContain("Free Bedrock Guardrail"));
     expect(rowNames()[1]).toContain("High Failure Guardrail");
     expect(rowNames()[2]).toContain("Low Failure Guardrail");
 
-    await user.click(screen.getByRole("button", { name: /Cost/ }));
+    await user.click(screen.getByRole("button", { name: "成本" }));
     await waitFor(() => expect(rowNames()[0]).toContain("High Failure Guardrail"));
     expect(rowNames()[1]).toContain("Free Bedrock Guardrail");
     expect(rowNames()[2]).toContain("Low Failure Guardrail");
@@ -186,9 +186,9 @@ describe("GuardrailsOverview", () => {
     renderOverview();
 
     expect(await screen.findByRole("heading", { name: "护栏监控", level: 1 })).toBeInTheDocument();
-    expect(screen.getByText("监控所有请求的 护栏表现")).toBeInTheDocument();
+    expect(screen.getByText("监控所有请求的护栏表现")).toBeInTheDocument();
     expect(document.querySelector(".lucide-heart-pulse")).not.toBeNull();
-    expect(screen.getByRole("button", { name: /Export Data/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "导出数据" })).toBeInTheDocument();
   });
 
   it("renders every summary metric card", async () => {
@@ -201,7 +201,7 @@ describe("GuardrailsOverview", () => {
     expect(screen.getByText("通过率")).toBeInTheDocument();
     expect(screen.getByText("94.4%")).toBeInTheDocument();
     expect(screen.getByText("15ms")).toBeInTheDocument();
-    expect(screen.getByText("活跃 Guardrail")).toBeInTheDocument();
+    expect(screen.getByText("活跃护栏")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
@@ -218,7 +218,7 @@ describe("GuardrailsOverview", () => {
     renderOverview();
 
     const card = await screen.findByRole("group", { name: "护栏成本" });
-    await user.click(within(card).getByRole("button", { name: /How is this calculated/ }));
+    await user.click(within(card).getByRole("button", { name: "如何计算？" }));
 
     const dialog = await screen.findByRole("dialog", { name: "成本计算方式" });
     const cells = within(dialog)
@@ -229,11 +229,11 @@ describe("GuardrailsOverview", () => {
           .map((cell) => cell.textContent ?? ""),
       );
     expect(cells).toEqual([
-      ["合计", "$0.1500"],
+      ["High Failure Guardrail", "$0.1500"],
       ["Free Bedrock Guardrail", "$0.0000"],
       ["合计", "$0.1500"],
     ]);
-    expect(within(dialog).getByText(/250 units with no known price are left out of the cost/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/250 个用量单位无已知价格，未计入成本/)).toBeInTheDocument();
     const issueLink = within(dialog).getByRole("link", { name: "在 GitHub 上请求定价" });
     const issueUrl = new URL(issueLink.getAttribute("href") ?? "");
     expect(issueUrl.searchParams.get("template")).toBe("feature_request.yml");

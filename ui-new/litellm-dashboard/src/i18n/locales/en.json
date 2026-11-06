@@ -13820,6 +13820,15 @@
         "daily": "Daily",
         "weekly": "Weekly"
       },
+      "scale": {
+        "linear": "Linear",
+        "log": "Log"
+      },
+      "metricToggle": {
+        "spend": "Spend",
+        "tokens": "Tokens",
+        "requests": "Requests"
+      },
       "title": "{{granularity}} usage",
       "subtitle": "{{granularity}} {{metric}} by model (top 8, rest grouped as Other)",
       "bucketSize": "Bucket size",
@@ -13830,6 +13839,11 @@
     "breakdown": {
       "metricLabel": "Metric",
       "groupByLabel": "Group by",
+      "dimensions": {
+        "modelGroups": "Model",
+        "models": "Deployment",
+        "providers": "Provider"
+      },
       "empty": "No usage in this range",
       "byProvider": "by {{provider}}"
     },
