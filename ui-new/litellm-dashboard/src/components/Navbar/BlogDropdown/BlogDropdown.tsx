@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, LoaderCircle } from "lucide-react";
 import React from "react";
+import { cn } from "@/lib/cva.config";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00");
@@ -21,7 +22,14 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export const BlogDropdown: React.FC = () => {
+const SIDEBAR_BLOG_TRIGGER_CLASS =
+  "inline-flex h-auto w-full items-center justify-start gap-1 rounded-md border-0 bg-transparent px-2 py-1.5 text-[13px] font-medium text-sidebar-foreground/72 shadow-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-3 focus-visible:ring-sidebar-ring/50";
+
+type BlogDropdownProps = {
+  placement?: "navbar" | "sidebar";
+};
+
+export const BlogDropdown: React.FC<BlogDropdownProps> = ({ placement = "navbar" }) => {
   const disableBlogPosts = useDisableBlogPosts();
 
   const { data, isLoading, isError, refetch } = useBlogPosts();
@@ -85,10 +93,18 @@ export const BlogDropdown: React.FC = () => {
       <DropdownMenuTrigger
         openOnHover
         closeDelay={100}
-        render={<Button variant="ghost" className={`${NAV_PRODUCT_LINK_CLASS} border-0!`} />}
+        render={
+          <Button
+            variant="ghost"
+            className={placement === "sidebar" ? SIDEBAR_BLOG_TRIGGER_CLASS : `${NAV_PRODUCT_LINK_CLASS} border-0!`}
+          />
+        }
       >
         博客
-        <ChevronDown className="size-2.5 text-muted-foreground" aria-hidden />
+        <ChevronDown
+          className={cn("size-2.5", placement === "sidebar" ? "text-sidebar-foreground/65" : "text-muted-foreground")}
+          aria-hidden
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom" className="w-auto">
         {renderMenuContent()}

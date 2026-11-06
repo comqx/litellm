@@ -171,9 +171,14 @@ const SidebarAccountMenu: React.FC<SidebarAccountMenuProps> = ({ onLogout, colla
           <>
             <span className="min-w-0 flex-1 leading-tight">
               <span className="block truncate text-[13px] font-medium text-sidebar-foreground">{displayName}</span>
-              {userRole && <span className="block truncate text-[11px] text-muted-foreground">{userRole}</span>}
+              {userRole && <span className="block truncate text-[11px] text-sidebar-foreground/65">{userRole}</span>}
             </span>
-            <ChevronsUpDown size={16} strokeWidth={1.75} className="shrink-0 text-muted-foreground" aria-hidden />
+            <ChevronsUpDown
+              size={16}
+              strokeWidth={1.75}
+              className="shrink-0 text-sidebar-foreground/65"
+              aria-hidden
+            />
           </>
         )}
       </PopoverTrigger>

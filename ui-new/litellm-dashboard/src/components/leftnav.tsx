@@ -716,7 +716,7 @@ const Sidebar_: React.FC<SidebarProps> = ({
 
   return (
     <Sidebar collapsed={collapsed}>
-      <SidebarHeader className="h-14 border-b border-border group-data-[collapsed=true]/sidebar:h-auto">
+      <SidebarHeader className="h-14 border-b border-sidebar-border group-data-[collapsed=true]/sidebar:h-auto">
         <div className="flex items-center justify-between gap-2 group-data-[collapsed=true]/sidebar:flex-col">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <SidebarBrand collapsed={collapsed} />
@@ -724,7 +724,7 @@ const Sidebar_: React.FC<SidebarProps> = ({
               <Badge
                 variant="outline"
                 render={<a href="https://docs.litellm.ai/release_notes" target="_blank" rel="noopener noreferrer" />}
-                className="px-1.5 py-0 font-mono text-[10px] font-medium text-muted-foreground group-data-[collapsed=true]/sidebar:hidden"
+                className="border-sidebar-border/35 px-1.5 py-0 font-mono text-[10px] font-medium text-sidebar-foreground/65 group-data-[collapsed=true]/sidebar:hidden"
               >
                 v{version}
               </Badge>
@@ -736,7 +736,7 @@ const Sidebar_: React.FC<SidebarProps> = ({
               size="icon-sm"
               onClick={onToggleCollapsed}
               aria-label={collapsed ? "Expand sidebar" : "收起侧边栏"}
-              className="flex-none text-muted-foreground"
+              className="flex-none text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
               {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
             </Button>

@@ -34,7 +34,10 @@ export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ coll
       rel="noopener noreferrer"
       aria-label="文档"
       title="文档"
-      className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "text-muted-foreground")}
+      className={cn(
+        buttonVariants({ variant: "ghost", size: "icon-sm" }),
+        "text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+      )}
     >
       <BookOpen className="size-4" aria-hidden />
     </Link>
@@ -43,7 +46,7 @@ export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ coll
       href={DOCS_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className="rounded-md px-2 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+      className="rounded-md px-2 py-1.5 text-[13px] font-medium text-sidebar-foreground/72 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
     >
       文档
     </Link>
@@ -57,7 +60,10 @@ export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ coll
         rel="noopener noreferrer"
         aria-label="加入 Slack"
         title="LiteLLM Slack 社区"
-        className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "text-muted-foreground")}
+        className={cn(
+        buttonVariants({ variant: "ghost", size: "icon-sm" }),
+        "text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+      )}
       >
         <Slack className="size-4" aria-hidden />
       </Link>
@@ -66,7 +72,7 @@ export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ coll
         href={SLACK_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="rounded-md px-2 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        className="rounded-md px-2 py-1.5 text-[13px] font-medium text-sidebar-foreground/72 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
       >
         加入 Slack
       </Link>
@@ -84,7 +90,7 @@ export const SidebarResourceLinks: React.FC<SidebarResourceLinksProps> = ({ coll
   return (
     <div className="flex flex-col gap-0.5 border-t border-sidebar-border px-3 py-2">
       {docsLink}
-      {!disableBlogPosts ? <BlogDropdown /> : null}
+      {!disableBlogPosts ? <BlogDropdown placement="sidebar" /> : null}
       {slackLink}
     </div>
   );
