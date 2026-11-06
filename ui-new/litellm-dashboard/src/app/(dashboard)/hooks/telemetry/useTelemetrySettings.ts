@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createQueryKeys } from "../common/queryKeysFactory";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
 import { backgroundFetchClient, fetchClient } from "@/lib/http/api";
+import { whenProxyRoute } from "@/lib/http/missingProxyRoute";
 import { TELEMETRY_WINDOW_MS } from "@/lib/telemetry/uiEvents";
 import type { components } from "@/lib/http/schema";
 import { proxyAdminTierRoles } from "@/utils/roles";
@@ -16,8 +17,37 @@ export type TelemetrySettingsUpdate = {
 
 export const telemetrySettingsKeys = createQueryKeys("telemetrySettings");
 
-const fetchTelemetrySettings = async (): Promise<TelemetrySettings> =>
-  (await backgroundFetchClient.GET("/telemetry/settings")).data as TelemetrySettings;
+const telemetrySettingsPath = "/telemetry/settings";
+
+const absentTelemetrySettings: TelemetrySettings = {
+  available_destinations: [],
+  destination: null,
+  destination_set_by_environment: false,
+  editable: false,
+  environment_variables: [],
+  flush_interval_seconds: 0,
+  groups: [],
+  report: null,
+  report_is_sample: false,
+  retention_days: 0,
+  set_by_environment: false,
+  stored_destination: null,
+  stored_groups: null,
+  vetoed: false,
+};
+
+const fetchTelemetrySettings = (): Promise<TelemetrySettings> =>
+  whenProxyRoute(
+    telemetrySettingsPath,
+    async () => {
+      const { data } = await backgroundFetchClient.GET(telemetrySettingsPath);
+      if (data === undefined) {
+        throw new Error("The proxy returned no telemetry settings payload");
+      }
+      return data;
+    },
+    absentTelemetrySettings,
+  );
 
 export const useTelemetrySettings = () => {
   const { accessToken, userRole } = useAuthorized();

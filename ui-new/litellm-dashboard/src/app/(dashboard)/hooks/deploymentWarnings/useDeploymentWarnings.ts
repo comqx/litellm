@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
 import { backgroundFetchClient, fetchClient } from "@/lib/http/api";
+import { whenProxyRoute } from "@/lib/http/missingProxyRoute";
 import type { components } from "@/lib/http/schema";
 import { toast } from "@/lib/toast";
 import { isProxyAdminRole, isProxyAdminTierRole } from "@/utils/roles";
@@ -12,13 +13,22 @@ export type DeploymentWarningIgnoreUpdate = components["schemas"]["DeploymentWar
 
 const deploymentWarningKeys = createQueryKeys("deploymentWarnings");
 
-const fetchDeploymentWarnings = async (): Promise<DeploymentWarningsResponse> => {
-  const { data } = await backgroundFetchClient.GET("/health/deployment_warnings");
-  if (data === undefined) {
-    throw new Error("The proxy returned no deployment warnings payload");
-  }
-  return data;
-};
+const deploymentWarningsPath = "/health/deployment_warnings";
+
+const absentDeploymentWarnings: DeploymentWarningsResponse = { ignore_available: false, warnings: [] };
+
+const fetchDeploymentWarnings = async (): Promise<DeploymentWarningsResponse> =>
+  whenProxyRoute(
+    deploymentWarningsPath,
+    async () => {
+      const { data } = await backgroundFetchClient.GET(deploymentWarningsPath);
+      if (data === undefined) {
+        throw new Error("The proxy returned no deployment warnings payload");
+      }
+      return data;
+    },
+    absentDeploymentWarnings,
+  );
 
 export const useDeploymentHealthAccess = () => {
   const { accessToken, userRole, isViewOnly } = useAuthorized();

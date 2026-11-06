@@ -251,7 +251,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const currentUser = useCurrentUser(session?.key ?? null, session?.auth_header_name);
   const isInvitationFlow = Boolean(searchParams.get("invitation_id"));
   const sessionEnded = currentUser.isError && currentUserEndsSession(currentUser.error);
-  const identityPending = currentUser.isLoading || sessionEnded;
+  // A dataless refetch reports isLoading while isFetched stays true. Hiding the shell for it
+  // remounts the subscriber that started the refetch.
+  const identityPending = (!currentUser.isFetched && currentUser.isLoading) || sessionEnded;
 
   // Legacy invitation links point at /ui/?invitation_id=; the onboarding form now lives at its own
   // /onboarding route. Redirect once ui-config has loaded so uiHref resolves the SERVER_ROOT_PATH base.

@@ -1,17 +1,25 @@
 import { queryClient } from "@/contexts/ReactQueryProvider";
 import { backgroundFetchClient } from "@/lib/http/api";
+import { whenProxyRoute } from "@/lib/http/missingProxyRoute";
 import type { components } from "@/lib/http/schema";
 
 export type UiEvent = components["schemas"]["UIEventBody"];
 
 export const TELEMETRY_WINDOW_MS = 300_000;
 
+const uiEventsEnabledPath = "/telemetry/ui_events/enabled";
+
 export const pageNavigationQuery = {
   queryKey: ["telemetry", "pageNavigationEnabled"],
-  queryFn: async (): Promise<boolean> => {
-    const { data } = await backgroundFetchClient.GET("/telemetry/ui_events/enabled");
-    return data?.enabled ?? false;
-  },
+  queryFn: (): Promise<boolean> =>
+    whenProxyRoute(
+      uiEventsEnabledPath,
+      async () => {
+        const { data } = await backgroundFetchClient.GET(uiEventsEnabledPath);
+        return data?.enabled ?? false;
+      },
+      false,
+    ),
   staleTime: TELEMETRY_WINDOW_MS,
   retry: false,
 } as const;
