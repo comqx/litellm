@@ -295,6 +295,8 @@ gateway:
   # consumed by the gateway image entrypoint. Default is 1.
   numWorkers: 1
   extraEnv: [] # Add extra environment variables to the gateway
+  # Pod /etc/hosts entries. Use when a callback host is not in cluster DNS.
+  hostAliases: []
   envConfigMaps: [] # Add extra environment variables to the gateway from config maps
   envSecrets: [] # Add extra environment variables to the gateway from secrets
   # Additional volumes on the gateway Deployment (e.g. a ConfigMap holding
