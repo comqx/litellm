@@ -1,0 +1,19 @@
+image:
+  repository: hub.glodon.com/glodon-pub/lens
+  tag: v1.108.0-rc.1
+  pullPolicy: IfNotPresent
+gateway:
+  enabled: true
+  secretName: litellm-lens-connection
+  secretKey: gateway-secret
+serviceTokenSecret:
+  name: litellm-lens-connection
+  key: service-token
+publicUrl: https://uop-maas.glodon.com/lens-ingest
+ingestionUrl: https://uop-maas.glodon.com/lens-ingest
+clickhouse:
+  enabled: false
+clickhouseDatabase: default
+clickhouseSecret:
+  name: litellm-lens-clickhouse
+  key: url
